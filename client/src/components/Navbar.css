@@ -1,0 +1,41 @@
+/* Basic navbar styles */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  background-color: var(--color-header-bg);
+  color: #fff;
+}
+
+.navbar > .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.navbar a:hover {
+  text-decoration: underline;
+}
+
+.navbar-brand a {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.navbar-links {
+  list-style: none;
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link { padding: 6px 8px; border-radius: var(--radius-sm); }
+.nav-link--active { background: rgba(255,255,255,0.12); }
+.nav-link:focus-visible { outline: 3px solid rgba(255,255,255,0.45); outline-offset: 2px; }

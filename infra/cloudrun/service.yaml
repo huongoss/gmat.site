@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: gmat-practice-app
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - image: gcr.io/YOUR_PROJECT_ID/gmat-practice-app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGODB_URI
+              value: YOUR_MONGODB_URI
+            - name: JWT_SECRET
+              value: YOUR_JWT_SECRET
+            - name: STRIPE_SECRET_KEY
+              value: YOUR_STRIPE_SECRET_KEY
+  traffic:
+    - revisionName: gmat-practice-app-00001
+      percent: 100

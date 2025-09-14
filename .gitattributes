@@ -1,0 +1,23 @@
+# Normalize line endings and set default behavior
+* text=auto eol=lf
+
+# Files that should always be treated as text
+*.{js,ts,jsx,tsx,css,scss,sass,html,json,yml,yaml,md,mdx,graphql,vue} text eol=lf
+*.sh text eol=lf
+*.env text eol=lf
+
+# Files that should be treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

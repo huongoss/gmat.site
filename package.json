@@ -1,0 +1,37 @@
+{
+  "name": "gmat-practice-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "client:dev": "yarn workspace gmat-practice-app-client dev",
+    "server:dev": "yarn workspace gmat-practice-app-server dev",
+    "dev": "concurrently -k -n server,client -c blue,green \"yarn workspace gmat-practice-app-server dev\" \"yarn workspace gmat-practice-app-client dev\"",
+    "build": "yarn workspaces run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:react/recommended",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "react",
+      "@typescript-eslint"
+    ],
+    "rules": {
+      "react/react-in-jsx-scope": "off"
+    }
+  },
+  "browserslist": [
+    ">0.25%",
+    "not dead"
+  ],
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}

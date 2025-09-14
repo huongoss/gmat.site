@@ -1,0 +1,10 @@
+/* Home page styles aligned with design system */
+.home { display: grid; gap: var(--space-6); }
+
+.home-hero { text-align: center; background: linear-gradient(180deg, #ffffff, var(--color-surface-alt)); }
+.hero-actions { display: flex; gap: var(--space-3); justify-content: center; margin-top: var(--space-3); }
+
+.bullet-list { margin: var(--space-3) 0 0; padding-left: 1.15rem; color: var(--color-text); }
+.bullet-list li { margin-bottom: var(--space-2); color: var(--color-text-muted); }
+
+.home-footer { text-align: center; color: var(--color-text-muted); }
