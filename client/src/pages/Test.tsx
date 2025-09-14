@@ -5,6 +5,7 @@ import Timer from '../components/Timer';
 import ResultSummary from '../components/ResultSummary';
 import EmotionFeedback from '../components/EmotionFeedback';
 import { fetchDemoQuestions } from '../services/api';
+import { trackEvent } from '../utils/analytics';
 
 interface DemoQuestion {
   id: number;
@@ -18,13 +19,18 @@ const Test: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [completed, setCompleted] = useState(false);
+  const [startTs, setStartTs] = useState<number | null>(null);
+  const [completedBy, setCompletedBy] = useState<'all_answered' | 'time_up' | null>(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       const qs = await fetchDemoQuestions();
-      setQuestions(qs.slice(0, 10)); // trial: 10 questions
+      const ten = qs.slice(0, 10);
+      setQuestions(ten); // trial: 10 questions
+      setStartTs(Date.now());
+      trackEvent('test_start', { total_questions: ten.length, mode: 'demo' });
     })();
   }, []);
 
@@ -32,23 +38,54 @@ const Test: React.FC = () => {
   const progressPct = totalQuestions > 0 ? Math.round(((current + 1) / totalQuestions) * 100) : 0;
 
   const onAnswer = (optionId: string) => {
-    const qid = questions[current]?.id;
+    const q = questions[current];
+    const qid = q?.id;
     if (qid == null) return;
+
+    const correct = optionId === q.answer;
+    trackEvent('question_answered', {
+      question_id: qid,
+      selected_option: optionId,
+      correct,
+      question_index: current + 1,
+    });
+
     setAnswers((prev) => ({ ...prev, [qid]: optionId }));
     if (current < totalQuestions - 1) setCurrent((i) => i + 1);
-    else setCompleted(true);
+    else {
+      setCompleted(true);
+      setCompletedBy('all_answered');
+    }
   };
 
-  const onTimeUp = () => setCompleted(true);
+  const onTimeUp = () => {
+    setCompleted(true);
+    setCompletedBy('time_up');
+  };
 
   const score = useMemo(() => {
     return questions.reduce((acc, q) => (answers[q.id] === q.answer ? acc + 1 : acc), 0);
   }, [answers, questions]);
 
+  useEffect(() => {
+    if (!completed) return;
+    const durationSec = startTs ? Math.round((Date.now() - startTs) / 1000) : undefined;
+    trackEvent('test_complete', {
+      score,
+      total_questions: totalQuestions,
+      percent_correct: totalQuestions ? Math.round((score / totalQuestions) * 100) : 0,
+      duration_sec: durationSec,
+      completed_by: completedBy || 'unknown',
+    });
+  }, [completed]);
+
   const handleRetake = () => {
     setCurrent(0);
     setAnswers({});
     setCompleted(false);
+    setStartTs(Date.now());
+    setCompletedBy(null);
+    trackEvent('test_restart', { mode: 'demo' });
   };
 
   const handleReview = () => navigate('/review');
@@ -63,7 +100,15 @@ const Test: React.FC = () => {
         {/* Trial gate CTA - encourage registration */}
         <div className="card mt-4">
           <p>Enjoyed the challenge? Create an account to unlock full-length GMAT practice and save your progress.</p>
-          <button className="btn mt-2" onClick={() => navigate('/account')}>Register for $10/month</button>
+          <button
+            className="btn mt-2"
+            onClick={() => {
+              trackEvent('cta_click', { location: 'test_result', cta: 'register' });
+              navigate('/account');
+            }}
+          >
+            Register for $10/month
+          </button>
         </div>
       </div>
     );

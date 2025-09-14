@@ -4,7 +4,7 @@ import './Footer.css';
 const Footer: React.FC = () => {
     return (
         <footer className="footer">
-            <div className="footer-content">
+            <div className="container">
                 <p>&copy; {new Date().getFullYear()} GMAT Practice App. All rights reserved.</p>
                 <p>Subscribe for more practice tests and resources!</p>
                 <p className="disclaimer">

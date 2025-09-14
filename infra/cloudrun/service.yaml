@@ -1,22 +1,32 @@
-apiVersion: serving.knative.dev/v1
+apiVersion: run.googleapis.com/v1
 kind: Service
 metadata:
   name: gmat-practice-app
-  namespace: default
 spec:
   template:
+    metadata:
+      annotations:
+        run.googleapis.com/client-name: manual-yaml
     spec:
       containers:
-        - image: gcr.io/YOUR_PROJECT_ID/gmat-practice-app:latest
+        - image: us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest
           ports:
             - containerPort: 8080
           env:
+            - name: NODE_ENV
+              value: production
             - name: MONGODB_URI
-              value: YOUR_MONGODB_URI
+              value: "mongodb+srv://free.cppzndx.mongodb.net/?authSource=$external&authMechanism=MONGODB-X509&retryWrites=true&w=majority&appName=free"
+            - name: MONGODB_TLS_CERT
+              valueSource:
+                secretKeyRef:
+                  secret: mongodb-client-pem
+                  version: 'latest'
             - name: JWT_SECRET
-              value: YOUR_JWT_SECRET
-            - name: STRIPE_SECRET_KEY
-              value: YOUR_STRIPE_SECRET_KEY
+              valueSource:
+                secretKeyRef:
+                  secret: jwt-secret
+                  version: 'latest'
   traffic:
-    - revisionName: gmat-practice-app-00001
+    - latestRevision: true
       percent: 100

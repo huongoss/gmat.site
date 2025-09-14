@@ -1,20 +1,21 @@
-/* Basic footer styles */
+/* Basic footer styles aligned with design system */
 .footer {
-  margin-top: 32px;
-  background-color: #0f172a; /* slate-900 */
+  margin-top: var(--space-8);
+  background-color: var(--color-footer-bg);
   color: #fff;
-  padding: 24px 16px;
+  padding: var(--space-6) var(--space-4);
 }
 
-.footer-content {
-  max-width: 960px;
-  margin: 0 auto;
+.footer .container {
   text-align: center;
   font-size: 0.95rem;
 }
 
+.footer p { margin: 0 0 var(--space-2); }
+.footer p:last-child { margin-bottom: 0; }
+
 .disclaimer {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   font-size: 0.85rem;
   line-height: 1.4;
   color: #cbd5e1; /* slate-300 */

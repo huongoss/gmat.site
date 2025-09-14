@@ -1,9 +1,11 @@
 import { body, validationResult } from 'express-validator';
+import { Request, Response, NextFunction } from 'express';
 
 export const validateRegistration = [
     body('email').isEmail().withMessage('Please enter a valid email address.'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long.'),
-    body('name').notEmpty().withMessage('Name is required.'),
+    body('username').optional().isString(),
+    body('name').optional().isString(),
 ];
 
 export const validateLogin = [
@@ -20,7 +22,7 @@ export const validateResultsRetrieval = [
     body('userId').notEmpty().withMessage('User ID is required.'),
 ];
 
-export const handleValidationErrors = (req, res, next) => {
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });

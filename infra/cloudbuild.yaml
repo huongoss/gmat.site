@@ -1,0 +1,40 @@
+# Cloud Build configuration to build and push the app image
+# Substitutions expected:
+#  _PROJECT_ID: GCP project ID
+#  _REGION: Artifact Registry region (e.g., us-central1)
+#  _REPOSITORY: Artifact Registry repo name (e.g., web)
+#  _IMAGE: image name (e.g., gmat-practice-app)
+#  _VITE_GA_MEASUREMENT_ID: GA4 ID (e.g., G-XXXXXX)
+
+substitutions:
+  _PROJECT_ID: gmat-472115
+  _REGION: us-central1
+  _REPOSITORY: web
+  _IMAGE: gmat-practice-app
+  _VITE_GA_MEASUREMENT_ID: "G-EK1FT9KC5M"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: Build image
+    args:
+      [
+        'build',
+        '-f','infra/Dockerfile',
+        '--build-arg','VITE_GA_MEASUREMENT_ID=${_VITE_GA_MEASUREMENT_ID}',
+        '-t','${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:latest',
+        '.',
+      ]
+
+  - name: gcr.io/cloud-builders/docker
+    id: Push image
+    args:
+      [
+        'push',
+        '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:latest',
+      ]
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:latest'

@@ -2,15 +2,19 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Accept GA4 measurement ID at build time for Vite
+ARG VITE_GA_MEASUREMENT_ID
+ENV VITE_GA_MEASUREMENT_ID=${VITE_GA_MEASUREMENT_ID}
+
 # Install dependencies for server and client
 COPY server/package*.json server/
 COPY client/package*.json client/
-RUN npm ci --prefix server && npm ci --prefix client
+RUN npm install --prefix server && npm install --prefix client
 
 # Copy source
 COPY . .
 
-# Build client and server
+# Build client and server (client will read VITE_GA_MEASUREMENT_ID)
 RUN npm run build --prefix client && npm run build --prefix server
 
 # Runtime image

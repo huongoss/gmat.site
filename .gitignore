@@ -1,4 +1,4 @@
-# Dependencies
+# Node
 node_modules/
 client/node_modules/
 server/node_modules/
@@ -9,44 +9,47 @@ client/dist/
 server/dist/
 build/
 
-# TypeScript
-*.tsbuildinfo
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
 
-# Environment files
+# Env files
 .env
 .env.local
 .env.*.local
 client/.env
 server/.env
+infra/.env
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Certificates and keys
+*.pem
+*.crt
+*.key
 
-# Coverage
-coverage/
-.nyc_output/
-
-# Caches
-.tmp/
-.cache/
-
-# OS/Editor
-.DS_Store
-Thumbs.db
+# Editor and OS
 .vscode/
 .idea/
-*.swp
+.DS_Store
+Thumbs.db
 
-# Framework artifacts
-.next/
-.nuxt/
+# Tests
+coverage/
+.nyc_output/
+.jest/**
 
-# Docker
-# Ignore local override file if any
-docker-compose.override.yml
+# TypeScript
+*.tsbuildinfo
+
+# Runtime
+.tmp/
+.temporary/
+
+# Others
+*.local
+*.cache
+
+# GCP service account keys (do not commit)
+/gmat-472115-*.json
