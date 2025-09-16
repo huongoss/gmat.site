@@ -42,6 +42,9 @@ const Login: React.FC = () => {
         </div>
       </form>
       <p className="mt-3">
+        <Link to="/forgot-password">Forgot your password?</Link>
+      </p>
+      <p className="mt-3">
         No account? <Link to="/register">Register</Link>
       </p>
     </div>

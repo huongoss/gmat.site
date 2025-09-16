@@ -6,6 +6,9 @@ import Review from './pages/Review';
 import Account from './pages/Account';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import './styles/index.css';
@@ -26,6 +29,9 @@ const App: React.FC = () => {
                             <Route path="/account" element={<Account />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
+                            <Route path="/verify-email" element={<VerifyEmail />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
                         </Routes>
                     </div>
                 </main>

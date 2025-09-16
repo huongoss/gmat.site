@@ -1,21 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ message: 'Unauthorized access. Please log in.' });
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET is not set');
     }
+    return secret;
+};
 
-    jwt.verify(token, process.env.JWT_SECRET as string, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ message: 'Invalid token. Access denied.' });
+const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const authHeader = req.headers.authorization || '';
+        const [scheme, token] = authHeader.split(' ');
+
+        if (scheme !== 'Bearer' || !token) {
+            return res.status(401).json({ message: 'Missing or invalid Authorization header' });
         }
 
+        const decoded = jwt.verify(token, getJwtSecret());
         req.user = decoded;
-        next();
-    });
+        return next();
+    } catch (err: any) {
+        if (err?.message === 'JWT_SECRET is not set') {
+            console.error('Auth middleware misconfiguration:', err.message);
+            return res.status(500).json({ message: 'Server misconfiguration' });
+        }
+        return res.status(403).json({ message: 'Invalid or expired token' });
+    }
 };
 
 export default requireAuth;

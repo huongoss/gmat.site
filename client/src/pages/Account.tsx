@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { createBillingPortalSession, createCheckoutSession } from '../services/api';
+import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail } from '../services/api';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -11,6 +11,7 @@ const Account: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [resendingVerification, setResendingVerification] = useState(false);
 
     useEffect(() => {
         const status = params.get('status');
@@ -26,6 +27,23 @@ const Account: React.FC = () => {
     const handleLogout = () => {
         logout();
         navigate('/');
+    };
+
+    const handleResendVerification = async () => {
+        if (!user?.email) return;
+        
+        setResendingVerification(true);
+        setError(null);
+        setMessage(null);
+        
+        try {
+            await resendVerificationEmail(user.email);
+            setMessage('Verification email sent! Please check your inbox.');
+        } catch (err: any) {
+            setError(err?.response?.data?.message || err?.message || 'Failed to send verification email');
+        } finally {
+            setResendingVerification(false);
+        }
     };
 
     const handleSubscribe = useCallback(async () => {
@@ -77,6 +95,29 @@ const Account: React.FC = () => {
             {user ? (
                 <div>
                     <h2>Welcome, {user.username || user.name || 'User'}!</h2>
+                    <p className="mt-2">Email: {user.email}</p>
+                    
+                    {/* Email verification status */}
+                    <div className="mt-2">
+                        {user.emailVerified ? (
+                            <p className="alert alert-success">✅ Email verified</p>
+                        ) : (
+                            <div>
+                                <p className="alert alert-warning">⚠️ Email not verified</p>
+                                <p>Please verify your email address to access all features.</p>
+                                <div className="form-actions">
+                                    <button 
+                                        className="btn-outline" 
+                                        onClick={handleResendVerification}
+                                        disabled={resendingVerification}
+                                    >
+                                        {resendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
                     <p className="mt-2">Subscription: {user.subscriptionActive ? 'Active' : 'Inactive'}</p>
                     {user.subscriptionCurrentPeriodEnd && (
                         <p className="mt-2">Current period end: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleString()}</p>

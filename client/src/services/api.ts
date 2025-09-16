@@ -25,6 +25,27 @@ export const getProfile = async () => {
   return response.data;
 };
 
+// Email verification endpoints
+export const verifyEmail = async (token: string) => {
+  const response = await axios.post(`${API_BASE_URL}/auth/verify-email`, { token });
+  return response.data;
+};
+
+export const resendVerificationEmail = async (email: string) => {
+  const response = await axios.post(`${API_BASE_URL}/auth/resend-verification`, { email });
+  return response.data;
+};
+
+export const requestPasswordReset = async (email: string) => {
+  const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
+  return response.data;
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, { token, newPassword });
+  return response.data;
+};
+
 export const fetchQuestions = async () => {
   const response = await axios.get(`${API_BASE_URL}/tests/questions`);
   return response.data;
