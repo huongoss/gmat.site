@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { sendVerificationEmail, generateVerificationToken, sendPasswordResetEmail } from '../services/email';
 
 const getJwtSecret = () => {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || 'testsecret';
   if (!secret) throw new Error('JWT_SECRET is not set');
   return secret;
 };

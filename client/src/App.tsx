@@ -13,6 +13,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import './styles/index.css';
 import AnalyticsListener from './components/AnalyticsListener';
+import Pricing from './pages/Pricing';
+import DailyPractice from './pages/DailyPractice';
 
 const App: React.FC = () => {
     return (
@@ -27,6 +29,8 @@ const App: React.FC = () => {
                             <Route path="/test" element={<Test />} />
                             <Route path="/review" element={<Review />} />
                             <Route path="/account" element={<Account />} />
+                            <Route path="/pricing" element={<Pricing />} />
+                            <Route path="/daily" element={<DailyPractice />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
                             <Route path="/verify-email" element={<VerifyEmail />} />

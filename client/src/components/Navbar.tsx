@@ -14,6 +14,12 @@ const Navbar: React.FC = () => {
                         <NavLink to="/" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Home</NavLink>
                     </li>
                     <li>
+                        <NavLink to="/daily" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Daily</NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/pricing" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Pricing</NavLink>
+                    </li>
+                    <li>
                         <NavLink to="/test" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Test</NavLink>
                     </li>
                     <li>

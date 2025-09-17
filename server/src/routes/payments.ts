@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createPaymentIntent, createCheckoutSession, createBillingPortalSession } from '../services/payments';
+import { createPaymentIntent, createCheckoutSession, createBillingPortalSession, cancelSubscription, getPricing } from '../services/payments';
 import requireAuth from '../middleware/requireAuth';
 
 const router = Router();
@@ -12,5 +12,11 @@ router.post('/checkout-session', createCheckoutSession);
 
 // Create a Stripe Billing Portal session (requires auth; server derives customerId)
 router.post('/portal', requireAuth, createBillingPortalSession);
+
+// Cancel subscription at period end
+router.post('/cancel', requireAuth, cancelSubscription);
+
+// Public pricing endpoint
+router.get('/pricing', getPricing);
 
 export default router;

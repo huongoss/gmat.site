@@ -8,6 +8,8 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Pricing from '../pages/Pricing';
+import DailyPractice from '../pages/DailyPractice';
 
 const AppRouter: React.FC = () => {
     return (
@@ -18,6 +20,8 @@ const AppRouter: React.FC = () => {
                 <Route path="/test" element={<Test />} />
                 <Route path="/review" element={<Review />} />
                 <Route path="/account" element={<Account />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/daily" element={<DailyPractice />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
             </Routes>

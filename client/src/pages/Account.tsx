@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail } from '../services/api';
+import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail, cancelSubscription } from '../services/api';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -12,6 +12,7 @@ const Account: React.FC = () => {
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [resendingVerification, setResendingVerification] = useState(false);
+    const [canceling, setCanceling] = useState(false);
 
     useEffect(() => {
         const status = params.get('status');
@@ -74,6 +75,21 @@ const Account: React.FC = () => {
         }
     }, [user?.stripeCustomerId]);
 
+    const handleCancel = useCallback(async () => {
+        setCanceling(true);
+        setError(null);
+        setMessage(null);
+        try {
+            const res = await cancelSubscription();
+            setMessage(res.message || 'Subscription will cancel at period end.');
+            if (isAuthenticated) await refreshProfile();
+        } catch (e: any) {
+            setError(e?.response?.data?.error || e?.message || 'Failed to cancel subscription');
+        } finally {
+            setCanceling(false);
+        }
+    }, [isAuthenticated, refreshProfile]);
+
     if (!isAuthenticated) {
         return (
             <div className="card auth-card">
@@ -134,6 +150,9 @@ const Account: React.FC = () => {
                         <div className="form-actions">
                             <button className="btn-outline" disabled={loading} onClick={handleManage}>
                                 {loading ? 'Opening…' : 'Manage subscription'}
+                            </button>
+                            <button className="btn" style={{ marginLeft: 8 }} disabled={canceling} onClick={handleCancel}>
+                                {canceling ? 'Canceling…' : 'Cancel subscription'}
                             </button>
                         </div>
                     )}

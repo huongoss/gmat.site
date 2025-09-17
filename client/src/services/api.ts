@@ -51,6 +51,16 @@ export const fetchQuestions = async () => {
   return response.data;
 };
 
+export const getDailyQuestions = async () => {
+  const response = await axios.get(`${API_BASE_URL}/tests/daily`);
+  return response.data as { questions: Array<{ id: string; question: string; options: { id: string; text: string }[] }>; plan: 'free' | 'pro'; next_allocation_in_hours: number };
+};
+
+export const submitAnswers = async (payload: { userId: string; answers: Record<string, string> }) => {
+  const response = await axios.post(`${API_BASE_URL}/tests/submit`, payload);
+  return response.data as { score: number; totalQuestions: number };
+};
+
 export const submitResults = async (resultData: any) => {
   const response = await axios.post(`${API_BASE_URL}/results`, resultData);
   return response.data;
@@ -70,6 +80,16 @@ export const createCheckoutSession = async (payload: { userId: string; successUr
 export const createBillingPortalSession = async (payload: { customerId: string; returnUrl?: string }) => {
   const response = await axios.post(`${API_BASE_URL}/payments/portal`, payload);
   return response.data as { url: string };
+};
+
+export const cancelSubscription = async () => {
+  const response = await axios.post(`${API_BASE_URL}/payments/cancel`);
+  return response.data as { message: string; status: string; current_period_end?: string };
+};
+
+export const getPricing = async () => {
+  const response = await axios.get(`${API_BASE_URL}/payments/pricing`);
+  return response.data as { amount: number; currency: string; interval: string; priceId: string };
 };
 
 // Local-only helper to fetch demo questions from public folder

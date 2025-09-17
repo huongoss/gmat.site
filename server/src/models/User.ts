@@ -16,6 +16,18 @@ interface IUser extends Document {
         score: number;
         date: Date;
     }>;
+    questionProgress?: {
+        free?: {
+            servedQuestionIds: string[];
+            currentQuestionIds?: string[];
+            lastAllocatedAt?: Date;
+        };
+        pro?: {
+            index: number;
+            currentQuestionIds?: string[];
+            lastAllocatedAt?: Date;
+        };
+    };
 }
 
 const UserSchema: Schema = new Schema({
@@ -33,7 +45,31 @@ const UserSchema: Schema = new Schema({
         testId: { type: String, required: true },
         score: { type: Number, required: true },
         date: { type: Date, default: Date.now }
-    }]
+    }],
+    questionProgress: {
+        type: new Schema(
+            {
+                free: new Schema(
+                    {
+                        servedQuestionIds: { type: [String], default: [] },
+                        currentQuestionIds: { type: [String], default: [] },
+                        lastAllocatedAt: { type: Date },
+                    },
+                    { _id: false }
+                ),
+                pro: new Schema(
+                    {
+                        index: { type: Number, default: 0 },
+                        currentQuestionIds: { type: [String], default: [] },
+                        lastAllocatedAt: { type: Date },
+                    },
+                    { _id: false }
+                ),
+            },
+            { _id: false }
+        ),
+        default: {},
+    },
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>('User', UserSchema);

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/env';
 import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
@@ -10,12 +10,17 @@ import resultRoutes from './routes/results';
 import paymentsRoutes from './routes/payments';
 import { handleWebhook as stripeWebhook } from './services/payments';
 import cors from 'cors';
+import rateLimit from './middleware/rateLimit';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8080;
 
+// Trust proxy (required on Cloud Run to get correct client IP)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(cors());
+app.use(rateLimit);
 
 // Stripe webhook MUST come before express.json() and use raw body
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), stripeWebhook);

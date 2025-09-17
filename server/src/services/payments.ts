@@ -24,11 +24,73 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
   try {
+    // Prefer pre-created price if available
     const priceId = process.env.STRIPE_PRICE_ID;
-    if (!priceId) return res.status(500).json({ error: 'Missing STRIPE_PRICE_ID' });
 
-    const successUrl = (req.body?.successUrl as string) || `${getBaseUrl(req)}/account?status=success&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = (req.body?.cancelUrl as string) || `${getBaseUrl(req)}/account?status=cancel`;
+    let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
+    if (priceId) {
+      lineItems = [{ price: priceId, quantity: 1 }];
+    } else {
+      const productId = process.env.STRIPE_PRODUCT_ID;
+      const currency = (process.env.STRIPE_CURRENCY || 'usd').toLowerCase();
+      const intervalEnv = (process.env.STRIPE_INTERVAL || 'month').toLowerCase() as 'day' | 'week' | 'month' | 'year';
+
+      if (!productId) {
+        return res.status(500).json({ error: 'Missing STRIPE_PRODUCT_ID or STRIPE_PRICE_ID' });
+      }
+
+      // Try to use product default price first
+      let resolvedPriceId: string | undefined;
+      try {
+        const product = await stripe.products.retrieve(productId, { expand: ['default_price'] } as any);
+        const def = (product as any).default_price;
+        if (typeof def === 'string') resolvedPriceId = def;
+        else if (def && typeof def === 'object' && def.id) resolvedPriceId = def.id as string;
+      } catch (e) {
+        // ignore, fallback to listing prices
+      }
+
+      // If no default price, try to find an active monthly (or intervalEnv) price
+      if (!resolvedPriceId) {
+        const prices = await stripe.prices.list({ product: productId, active: true, limit: 50 });
+        const recurringMatch = prices.data.find((p) => p.recurring?.interval === intervalEnv);
+        const anyRecurring = prices.data.find((p) => p.recurring);
+        const anyPrice = prices.data[0];
+        const chosen = recurringMatch || anyRecurring || anyPrice;
+        if (chosen) resolvedPriceId = chosen.id;
+      }
+
+      const amountCentsRaw = process.env.STRIPE_PRICE_AMOUNT_CENTS || '';
+      const amountCents = parseInt(amountCentsRaw, 10);
+
+      if (resolvedPriceId) {
+        lineItems = [{ price: resolvedPriceId, quantity: 1 }];
+      } else if (amountCents) {
+        // Build price data on the fly with default monthly interval
+        lineItems = [
+          {
+            price_data: {
+              currency,
+              product: productId,
+              unit_amount: amountCents,
+              recurring: { interval: intervalEnv },
+            },
+            quantity: 1,
+          },
+        ];
+      } else {
+        return res.status(500).json({
+          error:
+            'No suitable Price found for product. Set a default/recurring price in Stripe, or provide STRIPE_PRICE_AMOUNT_CENTS.',
+        });
+      }
+    }
+
+    const successUrl =
+      (req.body?.successUrl as string) ||
+      `${getBaseUrl(req)}/account?status=success&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl =
+      (req.body?.cancelUrl as string) || `${getBaseUrl(req)}/account?status=cancel`;
     const userId = (req.body?.userId as string) || undefined;
 
     let customer: string | undefined;
@@ -41,7 +103,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
@@ -53,6 +115,36 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     return res.status(200).json({ url: session.url });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message ?? 'Failed to create checkout session' });
+  }
+};
+
+export const cancelSubscription = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any)?.id as string | undefined;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const u = await User.findById(userId);
+    if (!u || !u.stripeSubscriptionId) {
+      return res.status(400).json({ error: 'No active subscription found' });
+    }
+
+    // Cancel at period end by default
+    const subscription = await stripe.subscriptions.update(u.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    // Update DB with status and period end
+    u.subscriptionActive = subscription.status === 'active' || subscription.status === 'trialing';
+    u.subscriptionCurrentPeriodEnd = new Date((subscription.current_period_end || 0) * 1000);
+    await u.save();
+
+    return res.status(200).json({
+      message: 'Subscription will cancel at period end.',
+      status: subscription.status,
+      current_period_end: u.subscriptionCurrentPeriodEnd,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message ?? 'Failed to cancel subscription' });
   }
 };
 
@@ -161,6 +253,44 @@ export const handleWebhook = async (req: Request, res: Response) => {
   }
 
   res.json({ received: true });
+};
+
+export const getPricing = async (_req: Request, res: Response) => {
+  try {
+    const explicitPriceId = process.env.STRIPE_PRICE_ID;
+    let price: Stripe.Price | null = null;
+
+    if (explicitPriceId) {
+      price = await stripe.prices.retrieve(explicitPriceId);
+    } else {
+      const productId = process.env.STRIPE_PRODUCT_ID;
+      if (!productId) return res.status(500).json({ error: 'Missing STRIPE_PRODUCT_ID or STRIPE_PRICE_ID' });
+
+      try {
+        const product = await stripe.products.retrieve(productId, { expand: ['default_price'] } as any);
+        const def = (product as any).default_price;
+        if (def && typeof def === 'object') price = def as Stripe.Price;
+        else if (typeof def === 'string') price = await stripe.prices.retrieve(def);
+
+        if (!price) {
+          const prices = await stripe.prices.list({ product: productId, active: true, limit: 50 });
+          price = prices.data.find((p) => p.recurring?.interval === 'month') || prices.data.find((p) => p.recurring) || prices.data[0] || null;
+        }
+      } catch (e) {
+        return res.status(500).json({ error: 'Failed to resolve Stripe price' });
+      }
+    }
+
+    if (!price) return res.status(404).json({ error: 'No price configured' });
+
+    const amount = price.unit_amount || 0;
+    const currency = price.currency;
+    const interval = price.recurring?.interval || 'month';
+
+    return res.status(200).json({ amount, currency, interval, priceId: price.id });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || 'Failed to load pricing' });
+  }
 };
 
 function getBaseUrl(req: Request) {
