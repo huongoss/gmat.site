@@ -8,7 +8,7 @@ const loaded: string[] = [];
 
 function loadIfExists(p: string) {
   if (fs.existsSync(p)) {
-    dotenv.config({ path: p, override: false });
+    dotenv.config({ path: p });
     loaded.push(p);
   }
 }

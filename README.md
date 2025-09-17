@@ -61,7 +61,8 @@ To deploy the application on Google Cloud Run, follow these steps:
 
 2. Deploy to Google Cloud Run:
    ```
-   gcloud run deploy gmat-practice-app --image gmat-practice-app --platform managed
+   gcloud builds submit --config=infra/cloudbuild.yaml .
+   gcloud run deploy gmat-practice-app --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest --platform managed --region us-central1 --allow-unauthenticated --env-vars-file infra/env.yaml
    ```
 
 ## License
