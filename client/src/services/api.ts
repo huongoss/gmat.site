@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Prefer env override; fall back to local dev server on 8080
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api';
+// Prefer env override; fall back to relative '/api' for production
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
 // Single axios instance so auth header applies everywhere
 const api = axios.create({ baseURL: API_BASE_URL });

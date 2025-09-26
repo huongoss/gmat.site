@@ -16,6 +16,9 @@ RUN rm -rf node_modules package-lock.json && npm install
 # Copy source
 COPY . .
 
+# Set environment variables for production build
+ENV VITE_API_BASE_URL=/api
+
 # Build client and server using npm workspaces
 RUN npm run build --workspace=gmat-practice-app-client && npm run build --workspace=gmat-practice-app-server
 
