@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { User } from '../models/User';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-08-16',
+  apiVersion: '2023-10-16',
 });
 
 export const createPaymentIntent = async (req: Request, res: Response) => {
