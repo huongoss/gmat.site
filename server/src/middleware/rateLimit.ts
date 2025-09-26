@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 // Simple in-memory rate limiter: default 10 requests per 60 seconds per client ip
 // Note: For multi-instance deployments, use a shared store (e.g., Redis) instead.
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
-const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX || 10);
+const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX || 100);
 
 const buckets = new Map<string, { count: number; first: number }>();
 

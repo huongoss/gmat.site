@@ -47,7 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const uid = profile?.id || profile?._id;
             if (uid) setUserId(String(uid));
         } catch (e) {
-            // ignore
+            // If profile load fails (no token or 401), clear local auth state
+            // but don't crash the app
+            console.warn('Failed to refresh profile:', e);
         }
     };
 

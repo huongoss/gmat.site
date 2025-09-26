@@ -277,6 +277,7 @@ export const getPricing = async (_req: Request, res: Response) => {
           price = prices.data.find((p) => p.recurring?.interval === 'month') || prices.data.find((p) => p.recurring) || prices.data[0] || null;
         }
       } catch (e) {
+        console.error('Error fetching product prices from Stripe', e);
         return res.status(500).json({ error: 'Failed to resolve Stripe price' });
       }
     }

@@ -1,13 +1,14 @@
-import './config/env';
+import 'dotenv/config';
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import authRoutes from './routes/auth';
 import testRoutes from './routes/tests';
 import resultRoutes from './routes/results';
-import paymentsRoutes from './routes/payments';
+import paymentRoutes from './routes/payments';
 import { handleWebhook as stripeWebhook } from './services/payments';
 import cors from 'cors';
 import rateLimit from './middleware/rateLimit';
@@ -15,57 +16,55 @@ import rateLimit from './middleware/rateLimit';
 const app = express();
 const PORT = Number(process.env.PORT) || 8080;
 
-// Trust proxy (required on Cloud Run to get correct client IP)
+// Middleware
+// Trust proxy (needed on Cloud Run / reverse proxies)
 app.set('trust proxy', true);
 
-// Middleware
 app.use(cors());
-app.use(rateLimit);
 
-// Stripe webhook MUST come before express.json() and use raw body
+// Stripe webhook MUST be before express.json() and use raw body
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 
 // JSON parser for normal API routes
 app.use(express.json());
 
-// Helper: write env content to a temp file and return its path
-const writeTempPem = (filename: string, content?: string) => {
-  if (!content) return undefined;
-  const tmpDir = os.tmpdir();
-  const full = path.join(tmpDir, filename);
-  fs.writeFileSync(full, content, { encoding: 'utf8', mode: 0o600 });
-  return full;
-};
+// Basic rate limiting for API
+app.use(rateLimit);
 
 // Database connection
 (async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/gmat-practice';
+    // Helper: write inline PEM to a temp file when provided
+    const writeTempPem = (filename: string, content?: string) => {
+      if (!content) return undefined;
+      const trimmed = content.trim();
+      if (!trimmed.startsWith('-----BEGIN')) {
+        console.warn(`[mongo] Inline PEM for ${filename} missing BEGIN header; ignoring.`);
+        return undefined;
+      }
+      const full = path.join(os.tmpdir(), filename);
+      fs.writeFileSync(full, trimmed, { encoding: 'utf8', mode: 0o600 });
+      return full;
+    };
 
-    // Support X.509 via either file paths or inline PEM content
+    const mongoUri = (process.env.MONGODB_URI as string) || 'mongodb://localhost:27017/gmat-practice';
+
+    // Prefer provided file paths, otherwise accept inline PEM content
     const certPath = process.env.MONGODB_TLS_CERT_PATH || writeTempPem('client.pem', process.env.MONGODB_TLS_CERT);
     const caPath = process.env.MONGODB_TLS_CA_PATH || writeTempPem('ca.pem', process.env.MONGODB_TLS_CA);
 
-    const baseOpts: any = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      // Mongoose v5 option to use createIndex instead of ensureIndex
-      useCreateIndex: true as any,
-    };
-
-    const x509Opts: any = certPath
+    const x509Opts: Record<string, unknown> = certPath
       ? {
           tls: true,
           tlsCertificateKeyFile: certPath,
-          // Atlas default CA is trusted by Node; include CA only if custom
           ...(caPath ? { tlsCAFile: caPath } : {}),
           authMechanism: 'MONGODB-X509',
           authSource: '$external',
         }
       : {};
 
-    await mongoose.connect(mongoUri, { ...(baseOpts as any), ...(x509Opts as any) } as any);
-    console.log('MongoDB connected');
+    await mongoose.connect(mongoUri, x509Opts as any);
+    console.log(`MongoDB connected${certPath ? ' (X.509 TLS)' : ''}`);
   } catch (err) {
     console.error('MongoDB connection error:', err);
   }
@@ -75,7 +74,7 @@ const writeTempPem = (filename: string, content?: string) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/results', resultRoutes);
-app.use('/api/payments', paymentsRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Serve static frontend in production
 if (process.env.NODE_ENV === 'production') {
@@ -86,7 +85,22 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// Global error handler (logs to stderr which Cloud Run captures)
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
+});
+
+// Process-level safety nets
+process.on('unhandledRejection', (reason: any) => {
+  console.error('Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err: any) => {
+  console.error('Uncaught Exception:', err);
 });

@@ -1,100 +1,97 @@
 import axios from 'axios';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+// Prefer env override; fall back to local dev server on 8080
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
+// Single axios instance so auth header applies everywhere
+const api = axios.create({ baseURL: API_BASE_URL });
+
+// Set or clear the Authorization header
 export const setAuthToken = (token?: string) => {
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete axios.defaults.headers.common['Authorization'];
-  }
+    if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    else delete api.defaults.headers.common['Authorization'];
 };
 
+// Auth
 export const registerUser = async (userData: any) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/register`, userData);
-  return response.data;
+    const { data } = await api.post('/auth/register', userData);
+    return data;
 };
 
 export const loginUser = async (credentials: any) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
-  return response.data as { token: string };
+    const { data } = await api.post('/auth/login', credentials);
+    return data;
 };
 
 export const getProfile = async () => {
-  const response = await axios.get(`${API_BASE_URL}/auth/me`);
-  return response.data;
+    const { data } = await api.get('/auth/me');
+    return data;
 };
 
-// Email verification endpoints
-export const verifyEmail = async (token: string) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/verify-email`, { token });
-  return response.data;
-};
-
-export const resendVerificationEmail = async (email: string) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/resend-verification`, { email });
-  return response.data;
-};
-
-export const requestPasswordReset = async (email: string) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
-  return response.data;
-};
-
-export const resetPassword = async (token: string, newPassword: string) => {
-  const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, { token, newPassword });
-  return response.data;
-};
-
+// Tests / Results
 export const fetchQuestions = async () => {
-  const response = await axios.get(`${API_BASE_URL}/tests/questions`);
-  return response.data;
-};
-
-export const getDailyQuestions = async () => {
-  const response = await axios.get(`${API_BASE_URL}/tests/daily`);
-  return response.data as { questions: Array<{ id: string; question: string; options: { id: string; text: string }[] }>; plan: 'free' | 'pro'; next_allocation_in_hours: number };
-};
-
-export const submitAnswers = async (payload: { userId: string; answers: Record<string, string> }) => {
-  const response = await axios.post(`${API_BASE_URL}/tests/submit`, payload);
-  return response.data as { score: number; totalQuestions: number };
+    const { data } = await api.get('/tests/questions');
+    return data;
 };
 
 export const submitResults = async (resultData: any) => {
-  const response = await axios.post(`${API_BASE_URL}/results`, resultData);
-  return response.data;
+    const { data } = await api.post('/results', resultData);
+    return data;
 };
 
 export const fetchUserResults = async (userId: string) => {
-  const response = await axios.get(`${API_BASE_URL}/results/${userId}`);
-  return response.data;
-};
-
-// Stripe subscription helpers
-export const createCheckoutSession = async (payload: { userId: string; successUrl?: string; cancelUrl?: string }) => {
-  const response = await axios.post(`${API_BASE_URL}/payments/checkout-session`, payload);
-  return response.data as { url: string };
-};
-
-export const createBillingPortalSession = async (payload: { customerId: string; returnUrl?: string }) => {
-  const response = await axios.post(`${API_BASE_URL}/payments/portal`, payload);
-  return response.data as { url: string };
-};
-
-export const cancelSubscription = async () => {
-  const response = await axios.post(`${API_BASE_URL}/payments/cancel`);
-  return response.data as { message: string; status: string; current_period_end?: string };
-};
-
-export const getPricing = async () => {
-  const response = await axios.get(`${API_BASE_URL}/payments/pricing`);
-  return response.data as { amount: number; currency: string; interval: string; priceId: string };
+    const { data } = await api.get(`/results/${userId}`);
+    return data;
 };
 
 // Local-only helper to fetch demo questions from public folder
 export const fetchDemoQuestions = async (): Promise<Array<{ id: number; question: string; options: { id: string; text: string }[]; answer: string }>> => {
-  const res = await fetch('/data/demo-questions.json');
-  const json = await res.json();
-  return json.questions;
+    const res = await fetch('/data/demo-questions.json');
+    const json = await res.json();
+    return json.questions;
+};
+
+// Payments
+export const createCheckoutSession = async (body: { userId?: string; successUrl?: string; cancelUrl?: string }) => {
+    const { data } = await api.post('/payments/checkout-session', body);
+    return data as { url: string };
+};
+
+export const createBillingPortalSession = async (body?: { returnUrl?: string }) => {
+    const { data } = await api.post('/payments/portal', body || {});
+    return data as { url: string };
+};
+
+export const cancelSubscription = async () => {
+    const { data } = await api.post('/payments/cancel');
+    return data as { message?: string; status?: string; current_period_end?: string };
+};
+
+export const getPricing = async () => {
+    const { data } = await api.get('/payments/pricing');
+    return data as { amount: number; currency: string; interval: string; priceId: string };
+};
+
+// Email verification
+export const resendVerificationEmail = async (email: string) => {
+  const { data } = await api.post('/auth/resend-verification', { email });
+  return data as { message: string };
+};
+
+export const verifyEmail = async (token: string) => {
+  const { data } = await api.post('/auth/verify-email', { token });
+  return data as { message: string };
+};// Daily practice APIs
+export const getDailyQuestions = async () => {
+    const { data } = await api.get('/tests/daily');
+    return data as {
+        plan: 'free' | 'pro';
+        next_allocation_in_hours: number;
+        questions: Array<{ id: string; question: string; options: { id: string; text: string }[] }>;
+    };
+};
+
+export const submitAnswers = async (body: { userId: string; answers: Record<string, string> }) => {
+    const { data } = await api.post('/tests/daily/submit', body);
+    return data as { score: number };
 };

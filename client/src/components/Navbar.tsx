@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import './Navbar.css';
+import useAuth from '../hooks/useAuth';
 
 const Navbar: React.FC = () => {
+    const { isAuthenticated } = useAuth();
     return (
         <nav className="navbar">
             <div className="container">
@@ -14,20 +16,33 @@ const Navbar: React.FC = () => {
                         <NavLink to="/" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Home</NavLink>
                     </li>
                     <li>
-                        <NavLink to="/daily" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Daily</NavLink>
-                    </li>
-                    <li>
                         <NavLink to="/pricing" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Pricing</NavLink>
                     </li>
-                    <li>
-                        <NavLink to="/test" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Test</NavLink>
-                    </li>
-                    <li>
-                        <NavLink to="/review" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Review</NavLink>
-                    </li>
-                    <li>
-                        <NavLink to="/account" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Account</NavLink>
-                    </li>
+                    {isAuthenticated ? (
+                        <>
+                            <li>
+                                <NavLink to="/daily" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Daily</NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/test" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Test</NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/review" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Review</NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/account" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Account</NavLink>
+                            </li>
+                        </>
+                    ) : (
+                        <>
+                            <li>
+                                <NavLink to="/login" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Login</NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/register" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Sign up</NavLink>
+                            </li>
+                        </>
+                    )}
                 </ul>
             </div>
         </nav>
