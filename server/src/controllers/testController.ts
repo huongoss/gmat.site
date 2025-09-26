@@ -82,82 +82,191 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const isPro = !!user.subscriptionActive;
-        const bankSize = isPro ? PRO_BANK_SIZE : FREE_BANK_SIZE;
-        const allocationCount = isPro ? PRO_ALLOCATION_COUNT : FREE_ALLOCATION_COUNT;
-        const intervalHours = isPro ? 24 : 48;
+        const questionsPerDay = isPro ? 10 : 2;
+        const bankSize = isPro ? 1000 : 100;
 
-        // Build bank: first N questions in stable order
-        const bank = await Question.find({}, { questionText: 1, options: 1 })
-            .sort({ _id: 1 })
-            .limit(bankSize)
-            .lean();
-        const bankIds = bank.map((q) => String((q as any)._id));
-
-        // Ensure progress structure
-        user.questionProgress = user.questionProgress || {};
-        if (isPro) user.questionProgress.pro = user.questionProgress.pro || { index: 0, currentQuestionIds: [] } as any;
-        else user.questionProgress.free = user.questionProgress.free || { servedQuestionIds: [], currentQuestionIds: [] } as any;
-
-        if (!isPro) {
-            const free = user.questionProgress.free! as any;
-            const fresh = hoursSince(free.lastAllocatedAt) < intervalHours && (free.currentQuestionIds?.length || 0) > 0;
-            let selectedIds: string[] = [];
-            if (fresh) {
-                selectedIds = free.currentQuestionIds.slice();
-            } else {
-                // pick randomly from remaining in bank
-                const served = new Set<string>(free.servedQuestionIds || []);
-                let candidates = bankIds.filter((id) => !served.has(id));
-                if (candidates.length < allocationCount) {
-                    // reset served if exhausted
-                    served.clear();
-                    candidates = bankIds.slice();
-                    free.servedQuestionIds = [];
-                }
-                // random shuffle simple
-                for (let i = candidates.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-                }
-                selectedIds = candidates.slice(0, allocationCount);
-                free.currentQuestionIds = selectedIds;
-                free.lastAllocatedAt = new Date();
-                free.servedQuestionIds = Array.from(new Set([...(free.servedQuestionIds || []), ...selectedIds]));
-                await user.save();
-            }
-
-            const selected = bank.filter((q) => selectedIds.includes(String((q as any)._id)));
-            const payload = selected.map((q) => ({
-                id: String((q as any)._id),
-                question: q.questionText,
-                options: (q.options || []).map((text: string, idx: number) => ({ id: String.fromCharCode(97 + idx), text })),
-            }));
-            return res.status(200).json({ questions: payload, plan: 'free', next_allocation_in_hours: Math.max(0, intervalHours - hoursSince(user.questionProgress.free!.lastAllocatedAt || undefined)) });
-        } else {
-            const pro = user.questionProgress.pro! as any;
-            const fresh = hoursSince(pro.lastAllocatedAt) < intervalHours && (pro.currentQuestionIds?.length || 0) > 0;
-            let selectedIds: string[] = [];
-            if (fresh) {
-                selectedIds = pro.currentQuestionIds.slice();
-            } else {
-                const start = Math.min(pro.index || 0, bankIds.length);
-                const end = Math.min(start + allocationCount, bankIds.length);
-                selectedIds = bankIds.slice(start, end);
-                pro.currentQuestionIds = selectedIds;
-                pro.lastAllocatedAt = new Date();
-                pro.index = end; // advance progress; cap at bank end
-                await user.save();
-            }
-
-            const selected = bank.filter((q) => selectedIds.includes(String((q as any)._id)));
-            const payload = selected.map((q) => ({
-                id: String((q as any)._id),
-                question: q.questionText,
-                options: (q.options || []).map((text: string, idx: number) => ({ id: String.fromCharCode(97 + idx), text })),
-            }));
-            return res.status(200).json({ questions: payload, plan: 'pro', next_allocation_in_hours: Math.max(0, intervalHours - hoursSince(user.questionProgress.pro!.lastAllocatedAt || undefined)) });
+        // Check if user has already completed practice today (not just got questions)
+        const today = new Date().toDateString();
+        const lastPracticeCompleted = user.lastDailyDate ? user.lastDailyDate.toDateString() : null;
+        
+        if (lastPracticeCompleted === today && !isPro) {
+            return res.status(200).json({ 
+                message: 'You have already completed today\'s practice. Come back tomorrow!', 
+                questions: [], 
+                canPractice: false,
+                progress: user.currentQuestionIndex || 0,
+                totalQuestions: bankSize,
+                plan: 'free'
+            });
         }
+
+        // For users: serve next questions sequentially from current progress
+        let startIndex = user.currentQuestionIndex || 0;
+        
+        // Reset to beginning if completed all questions
+        if (startIndex >= bankSize) {
+            startIndex = 0;
+            user.currentQuestionIndex = 0;
+            await user.save();
+        }
+
+        // Get questions from database
+        const questions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1 })
+            .sort({ _id: 1 })
+            .skip(startIndex)
+            .limit(questionsPerDay)
+            .lean();
+
+        if (questions.length === 0) {
+            return res.status(200).json({
+                message: 'No questions available at this time',
+                questions: [],
+                canPractice: false,
+                progress: startIndex,
+                totalQuestions: bankSize,
+                plan: isPro ? 'pro' : 'free'
+            });
+        }
+
+        const payload = questions.map((q, index) => ({
+            id: String((q as any)._id),
+            question: q.questionText,
+            options: (q.options || []).map((text: string, idx: number) => ({ 
+                id: String.fromCharCode(97 + idx), 
+                text 
+            })),
+            sequenceNumber: startIndex + index + 1 // Show user which question number this is (1-100)
+        }));
+
+        return res.status(200).json({ 
+            questions: payload, 
+            plan: isPro ? 'pro' : 'free',
+            progress: startIndex,
+            totalQuestions: bankSize,
+            canPractice: true
+        });
+
     } catch (error) {
         res.status(500).json({ message: 'Error fetching daily questions', error });
+    }
+};
+
+// Submit daily practice answers and update progress
+export const submitDailyAnswers = async (req: Request, res: Response) => {
+    try {
+        const userId = (req.user as any)?.id as string | undefined;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const { answers } = req.body as { answers: Record<string, string> };
+        if (!answers || typeof answers !== 'object') {
+            return res.status(400).json({ message: 'Invalid answers format' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const questionIds = Object.keys(answers);
+        const questionsPerDay = user.subscriptionActive ? 10 : 2;
+
+        // Get the questions with correct answers
+        const questions = await Question.find({ _id: { $in: questionIds } }).lean();
+        if (questions.length !== questionIds.length) {
+            return res.status(400).json({ message: 'Some questions not found' });
+        }
+
+        // Calculate score
+        let correctAnswers = 0;
+        const feedback: Array<{ questionId: string, correct: boolean, correctAnswer: string, userAnswer: string }> = [];
+
+        questions.forEach((question: any) => {
+            const questionId = String(question._id);
+            const userAnswer = answers[questionId];
+            const correctAnswer = question.correctAnswer;
+            const isCorrect = userAnswer === correctAnswer;
+            
+            if (isCorrect) correctAnswers++;
+            
+            feedback.push({
+                questionId,
+                correct: isCorrect,
+                correctAnswer,
+                userAnswer
+            });
+        });
+
+        const score = Math.round((correctAnswers / questions.length) * 100);
+
+        // Save result to database
+        const result = new Result({
+            userId,
+            score,
+            questionsAnswered: questions.length,
+            correctAnswers,
+            type: 'daily',
+            questionIds,
+            userAnswers: answers,
+            dateTaken: new Date()
+        });
+        await result.save();
+
+        // Update user progress
+        user.currentQuestionIndex = (user.currentQuestionIndex || 0) + questionsPerDay;
+        user.lastDailyDate = new Date();
+        await user.save();
+
+        return res.status(200).json({
+            message: 'Daily practice submitted successfully',
+            score,
+            correctAnswers,
+            totalQuestions: questions.length,
+            feedback,
+            progress: user.currentQuestionIndex,
+            totalInBank: user.subscriptionActive ? 1000 : 100
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error submitting daily answers', error });
+    }
+};
+
+// Get user's progress and practice history
+export const getUserProgress = async (req: Request, res: Response) => {
+    try {
+        const userId = (req.user as any)?.id as string | undefined;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Get daily practice history
+        const dailyHistory = await Result.find({ 
+            userId, 
+            type: 'daily' 
+        }).sort({ dateTaken: -1 }).limit(10);
+
+        const isPro = !!user.subscriptionActive;
+        const totalQuestions = isPro ? 1000 : 100;
+        const currentProgress = user.currentQuestionIndex || 0;
+
+        return res.status(200).json({
+            progress: {
+                current: currentProgress,
+                total: totalQuestions,
+                percentage: Math.round((currentProgress / totalQuestions) * 100)
+            },
+            canPracticeToday: user.lastDailyDate ? 
+                user.lastDailyDate.toDateString() !== new Date().toDateString() : true,
+            lastPracticeDate: user.lastDailyDate,
+            dailyHistory: dailyHistory.map(result => ({
+                date: result.dateTaken,
+                score: result.score,
+                correctAnswers: result.correctAnswers,
+                totalQuestions: result.questionsAnswered
+            })),
+            plan: isPro ? 'pro' : 'free'
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching user progress', error });
     }
 };

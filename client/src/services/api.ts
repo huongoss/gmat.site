@@ -85,12 +85,40 @@ export const verifyEmail = async (token: string) => {
 export const getDailyQuestions = async () => {
     const { data } = await api.get('/tests/daily');
     return data as {
+        questions: Array<{ id: string; question: string; options: { id: string; text: string }[]; sequenceNumber: number }>;
         plan: 'free' | 'pro';
-        next_allocation_in_hours: number;
-        questions: Array<{ id: string; question: string; options: { id: string; text: string }[] }>;
+        progress: number;
+        totalQuestions: number;
+        canPractice: boolean;
+        message?: string;
     };
 };
 
+export const submitDailyAnswers = async (answers: Record<string, string>) => {
+    const { data } = await api.post('/tests/daily/submit', { answers });
+    return data as {
+        message: string;
+        score: number;
+        correctAnswers: number;
+        totalQuestions: number;
+        feedback: Array<{ questionId: string; correct: boolean; correctAnswer: string; userAnswer: string }>;
+        progress: number;
+        totalInBank: number;
+    };
+};
+
+export const getUserProgress = async () => {
+    const { data } = await api.get('/tests/progress');
+    return data as {
+        progress: { current: number; total: number; percentage: number };
+        canPracticeToday: boolean;
+        lastPracticeDate?: string;
+        dailyHistory: Array<{ date: string; score: number; correctAnswers: number; totalQuestions: number }>;
+        plan: 'free' | 'pro';
+    };
+};
+
+// Legacy function for compatibility
 export const submitAnswers = async (body: { userId: string; answers: Record<string, string> }) => {
     const { data } = await api.post('/tests/daily/submit', body);
     return data as { score: number };

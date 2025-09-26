@@ -8,7 +8,8 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "test": "jest",
-    "seed": "ts-node src/scripts/seed.ts"
+    "seed": "ts-node src/scripts/seed.ts",
+    "seed-questions": "ts-node src/scripts/seedQuestions.ts"
   },
   "dependencies": {
     "express": "^4.17.1",
