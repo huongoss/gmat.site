@@ -54,7 +54,7 @@ const Test: React.FC = () => {
 
   if (completed) {
     return (
-      <div>
+      <div className="content-narrow">
         <ResultSummary score={score} totalQuestions={totalQuestions} onRetake={handleRetake} onReview={handleReview} />
         <EmotionFeedback correctAnswers={score} totalQuestions={totalQuestions} />
         {/* Trial gate CTA - encourage registration */}
@@ -69,7 +69,7 @@ const Test: React.FC = () => {
   const q = questions[current];
 
   return (
-    <div>
+    <div className="content-narrow">
       <h1>GMAT Practice Test</h1>
       <Timer duration={30 * 60} onTimeUp={onTimeUp} />
       {q && (

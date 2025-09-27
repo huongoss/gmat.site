@@ -10,17 +10,22 @@ interface QuestionCardProps {
 const QuestionCard: React.FC<QuestionCardProps> = ({ question, options, selectedOptionId, onOptionSelect }) => {
     return (
         <div className="question-card">
-            <h2 className="question">{question}</h2>
+            <h2 className="question-text">{question}</h2>
             <div className="options">
-                {options.map((option) => (
-                    <button
-                        key={option.id}
-                        className={`option ${selectedOptionId === option.id ? 'selected' : ''}`}
-                        onClick={() => onOptionSelect(option.id)}
-                    >
-                        {option.id.toUpperCase()}. {option.text}
-                    </button>
-                ))}
+                {options.map((option) => {
+                    const isSelected = selectedOptionId === option.id;
+                    return (
+                        <button
+                            key={option.id}
+                            className={`option ${isSelected ? 'selected' : ''}`}
+                            onClick={() => onOptionSelect(option.id)}
+                            type="button"
+                        >
+                            <span className="option-letter">{option.id.toUpperCase()}</span>
+                            <span className="option-text">{option.text}</span>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

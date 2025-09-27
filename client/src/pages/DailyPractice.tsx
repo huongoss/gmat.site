@@ -62,8 +62,8 @@ const DailyPractice: React.FC = () => {
     }
   };
 
-  if (loading && !submitted) return <div className="card"><p>Loading daily practice…</p></div>;
-  if (error && !canPractice) return <div className="card">
+  if (loading && !submitted) return <div className="card content-narrow"><p>Loading daily practice…</p></div>;
+  if (error && !canPractice) return <div className="card content-narrow">
     <h1 className="page-title">Daily practice</h1>
     <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>
     {progress && (
@@ -76,11 +76,11 @@ const DailyPractice: React.FC = () => {
     </div>
   </div>;
   
-  if (error && canPractice) return <div className="card"><p className="alert alert-danger">{error}</p></div>;
+  if (error && canPractice) return <div className="card content-narrow"><p className="alert alert-danger">{error}</p></div>;
 
   if (submitted && result) {
     return (
-      <div className="card">
+      <div className="card content-narrow">
         <h1 className="page-title">Daily practice</h1>
         <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>
         <p className="alert alert-success">Completed! Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%)</p>
@@ -104,7 +104,7 @@ const DailyPractice: React.FC = () => {
   }
 
   return (
-    <div className="card">
+  <div className="card content-narrow">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <h1 className="page-title">Daily practice</h1>
         <span className="badge">{plan === 'pro' ? 'Monthly' : 'Free'}</span>

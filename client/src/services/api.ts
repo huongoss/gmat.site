@@ -123,3 +123,9 @@ export const submitAnswers = async (body: { userId: string; answers: Record<stri
     const { data } = await api.post('/tests/daily/submit', body);
     return data as { score: number };
 };
+
+// Support / Contact
+export const postSupportContact = async (payload: { name?: string; email: string; message: string }) => {
+    const { data } = await api.post('/support/contact', payload);
+    return data as { ok: boolean };
+};

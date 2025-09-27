@@ -1,10 +1,89 @@
-/* Home page styles aligned with design system */
-.home { display: grid; gap: var(--space-6); }
+/* Home page redesigned layout */
+.home { display: flex; flex-direction: column; width: 100%; gap: var(--space-8); }
 
-.home-hero { text-align: center; background: linear-gradient(180deg, #ffffff, var(--color-surface-alt)); }
-.hero-actions { display: flex; gap: var(--space-3); justify-content: center; margin-top: var(--space-3); }
+/* Hero */
+/* Use brand gradient tokens for consistency */
+.hero { position: relative; padding: 96px var(--space-4); text-align: center; color: #fff; background: var(--gradient-hero); overflow: hidden; }
+/* Home page redesigned layout */
+.home { display: flex; flex-direction: column; width: 100%; gap: var(--space-6); }
+.hero-inner { position: relative; max-width: 960px; margin: 0 auto; z-index: 1; }
+.hero-title { font-size: 2.25rem; font-weight: 800; line-height: 1.15; margin: 0 0 var(--space-4); text-shadow: 0 2px 8px rgba(0,0,0,0.25); color: var(--color-hero-title); }
+.section-base { padding: 56px var(--space-4); }
+@media (min-width: 640px) { .section-base { padding: 72px var(--space-5); } }
+@media (min-width: 1024px) { .section-base { padding: 88px var(--space-5); } }
+@media (min-width: 768px) { .hero-title { font-size: 3rem; } }
+.hero-sub { font-size: 1.05rem; max-width: 760px; margin: 0 auto var(--space-6); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.25); color: var(--color-hero-sub); }
+@media (min-width: 768px) { .hero-sub { font-size: 1.25rem; } }
+.hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+.hero { position: relative; text-align: center; color: #fff; background: var(--gradient-hero); overflow: hidden; }
+.hero.section-base { padding-top: 100px; padding-bottom: 100px; }
+@media (min-width: 640px) { .hero.section-base { padding-top: 128px; padding-bottom: 128px; } }
+/* Credibility */
+.credibility { padding: 80px var(--space-4); text-align: center; }
+.credibility-inner { max-width: 1120px; margin: 0 auto; }
+.credibility { text-align: center; }
+.credibility.section-base { background: #fff; }
+@media (min-width: 768px) { .credibility h2 { font-size: 2.25rem; } }
+.citation-links { display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: center; margin: 0 0 var(--space-4); }
+.citation-links a { color: var(--color-primary); text-decoration: underline; font-weight: 500; }
+.how { background: var(--color-surface-alt); }
 
-.bullet-list { margin: var(--space-3) 0 0; padding-left: 1.15rem; color: var(--color-text); }
-.bullet-list li { margin-bottom: var(--space-2); color: var(--color-text-muted); }
+/* Steps / How it works */
+.how { background: var(--color-surface-alt); padding: 80px var(--space-4); }
+.science { text-align: center; }
+.science.section-base { background: #fff; }
+.how-inner { max-width: 1120px; margin: 0 auto; text-align: center; }
+.how-title { font-size: 2rem; margin: 0 0 var(--space-6); }
+@media (min-width: 768px) { .how-title { font-size: 2.25rem; } }
+.pricing-teaser { background: linear-gradient(135deg, var(--color-surface-alt) 0%, #eef2f8 60%, #e2e8f0 100%); text-align: center; }
+.how-grid { display: grid; gap: var(--space-5); }
+@media (min-width: 768px) { .how-grid { grid-template-columns: repeat(3, 1fr); } }
+.how-card { padding: var(--space-6); background: #fff; border: 1px solid var(--color-border); border-radius: 24px; box-shadow: var(--shadow-sm); transition: transform .25s ease, box-shadow .25s ease; text-align: left; }
+.hero-title { font-size: 2.15rem; font-weight: 800; line-height: 1.15; margin: 0 0 var(--space-4); text-shadow: 0 2px 6px rgba(0,0,0,0.28); letter-spacing: -.5px; color: var(--color-hero-title); }
+.how-card h3 { margin: 0 0 var(--space-3); font-size: 1.25rem; font-weight: 600; }
+.how-card p { margin: 0; color: var(--color-text-muted); }
 
-.home-footer { text-align: center; color: var(--color-text-muted); }
+/* Science section */
+.hero-sub { font-size: 1rem; max-width: 760px; margin: 0 auto var(--space-5); line-height: 1.55; text-shadow: 0 1px 3px rgba(0,0,0,0.25); color: var(--color-hero-sub); }
+@media (min-width: 640px) { .hero-sub { font-size: 1.1rem; } }
+.science { padding: 80px var(--space-4); text-align: center; }
+.science-inner { max-width: 880px; margin: 0 auto; }
+.science h2 { font-size: 2rem; margin: 0 0 var(--space-4); }
+@media (min-width: 768px) { .science h2 { font-size: 2.25rem; } }
+.credibility h2 { font-size: 1.9rem; margin: 0 0 var(--space-3); letter-spacing: -.5px; }
+.science p { font-size: 1rem; line-height: 1.55; margin: 0 0 var(--space-6); }
+@media (min-width: 768px) { .science p { font-size: 1.15rem; } }
+
+/* Pricing teaser */
+.how-title { font-size: 1.9rem; margin: 0 0 var(--space-5); letter-spacing: -.5px; }
+.pricing-teaser { background: var(--color-surface-alt); padding: 80px var(--space-4); text-align: center; }
+.pricing-teaser h2 { font-size: 2rem; margin: 0 0 var(--space-4); }
+@media (min-width: 768px) { .pricing-teaser h2 { font-size: 2.25rem; } }
+.pricing-teaser p { font-size: 1rem; margin: 0 0 var(--space-6); }
+.science h2 { font-size: 1.9rem; margin: 0 0 var(--space-4); letter-spacing: -.5px; }
+@media (min-width: 768px) { .pricing-teaser p { font-size: 1.15rem; } }
+
+/* Utility adjustments */
+.mt-0 { margin-top: 0; }
+.pricing-teaser h2 { font-size: 1.9rem; margin: 0 0 var(--space-3); letter-spacing: -.5px; }
+.text-center { text-align: center; }
+.underline { text-decoration: underline; }
+
+/* Re-affirm button contrast on hero background */
+.how-card { padding: var(--space-5) var(--space-5) var(--space-6); background: #fff; border: 1px solid var(--color-border); border-radius: 20px; box-shadow: var(--shadow-sm); transition: transform .25s ease, box-shadow .25s ease; text-align: left; }
+/* Button overrides: keep outline variant legible on gradient */
+.hero .btn-outline { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.6); }
+.science p { font-size: 1rem; line-height: 1.6; margin: 0 0 var(--space-5); color: var(--color-text-muted); }
+.hero .btn-outline:hover { background: rgba(255,255,255,0.22); }
+
+/* Responsive tightening */
+@media (max-width: 480px) {
+.pricing-teaser p { font-size: 1rem; margin: 0 0 var(--space-5); color: var(--color-text-muted); }
+	.hero-title { font-size: 1.9rem; }
+	.hero-sub { font-size: .95rem; }
+	.how-card { padding: var(--space-5); }
+}
+/* Accent buttons inherit global styles; no hard-coded brand hex here */
+
+/* Evidence-based persuasion block */
+/* (Removed legacy evidence-blurb after redesign consolidation) */

@@ -66,7 +66,7 @@ const Account: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const { url } = await createBillingPortalSession({ customerId: user.stripeCustomerId });
+            const { url } = await createBillingPortalSession({ returnUrl: window.location.origin + '/account' });
             window.location.href = url;
         } catch (e: any) {
             setError(e?.response?.data?.error || e?.message || 'Failed to open billing portal');
@@ -103,7 +103,7 @@ const Account: React.FC = () => {
     }
 
     return (
-        <div className="card">
+        <div className="card content-narrow">
             <h1 className="page-title">Account</h1>
             {message && <p className="alert alert-success">{message}</p>}
             {error && <p className="alert alert-danger">{error}</p>}

@@ -26,3 +26,6 @@ try {
 }
 
 export const envLoadedPaths = loaded;
+
+// Commonly accessed config helpers
+export const SALES_EMAIL = process.env.SALES_EMAIL || 'sale@gmat.site';

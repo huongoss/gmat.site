@@ -6,6 +6,10 @@ import Review from '../pages/Review';
 import Account from '../pages/Account';
 import Pricing from '../pages/Pricing';
 import DailyPractice from '../pages/DailyPractice';
+import About from '../pages/About';
+import FAQ from '../pages/FAQ';
+import Contact from '../pages/Contact';
+import Disclaimer from '../pages/Disclaimer';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { RequireAuth, GuestOnly } from './guards';
@@ -19,7 +23,8 @@ const AppRouter: React.FC = () => {
             <Navbar />
             <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/test" element={<Test />} />
+                {/** Test now requires auth to ensure progress can be tracked & gated */}
+                <Route path="/test" element={<RequireAuth><Test /></RequireAuth>} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
                 <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
@@ -27,6 +32,10 @@ const AppRouter: React.FC = () => {
                 <Route path="/review" element={<RequireAuth><Review /></RequireAuth>} />
                 <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
                 <Route path="/daily" element={<RequireAuth><DailyPractice /></RequireAuth>} />
+                <Route path="/about" element={<About />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/disclaimer" element={<Disclaimer />} />
             </Routes>
             <Footer />
         </Router>

@@ -1,0 +1,28 @@
+.pricing-grid { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; }
+@media (min-width: 640px) { .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; } }
+.pricing-plan { position: relative; display: flex; flex-direction: column; padding: var(--space-5); border: 1px solid var(--color-border); }
+.pricing-plan__header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pricing-plan__title { margin: 0; }
+.pricing-plan__title--pro { position: relative; padding-right: 90px; }
+.pricing-badge--float { position: absolute; top: 2px; right: 0; }
+.pricing-plan__subtitle { margin: 4px 0 0; }
+.pricing-plan__price { margin: 12px 0 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.5px; }
+.pricing-plan__features { margin: 12px 0 0; padding-left: 20px; line-height: 1.45; flex-grow: 1; }
+.pricing-plan__features li { margin-bottom: 4px; }
+.pricing-plan__actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+.pricing-plan--free .pricing-plan__actions { margin-top: 24px; }
+.pricing-plan--pro { border: 1px solid var(--color-primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+.pricing-page .pricing-grid { align-items: stretch; }
+.pricing-plan h2 { margin-top: 0; }
+.pricing-badge { background: var(--color-primary); color: #fff; font-size: .65rem; padding: 4px 8px; border-radius: 999px; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; }
+@media (min-width: 640px) { .pricing-plan { min-height: 100%; } }
+/* Remove vertical stacking margin between sibling cards in horizontal layout */
+@media (min-width: 640px) {
+	.pricing-grid > .card + .card { margin-top: 0 !important; }
+}
+/* Manage button spacing fallback */
+.manage-btn { margin-left: 8px; }
+@media (max-width: 480px) { .manage-btn { margin-left: 0; } .pricing-plan__actions { flex-direction: column; align-items: stretch; } }
+
+/* Ensure equal height cards in grid */
+@media (min-width: 640px) { .pricing-plan { min-height: 100%; } }

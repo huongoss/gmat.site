@@ -35,7 +35,7 @@ const Review: React.FC = () => {
     }
 
     return (
-        <div className="review-container">
+        <div className="review-container content-narrow">
             <h1>Your Practice Results</h1>
             {results.length > 0 ? (
                 results.map((result, index) => {

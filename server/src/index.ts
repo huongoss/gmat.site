@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import testRoutes from './routes/tests';
 import resultRoutes from './routes/results';
 import paymentRoutes from './routes/payments';
+import supportRoutes from './routes/support';
 import { handleWebhook as stripeWebhook } from './services/payments';
 import cors from 'cors';
 import rateLimit from './middleware/rateLimit';
@@ -75,6 +76,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/support', supportRoutes);
 
 // Serve static frontend in production
 if (process.env.NODE_ENV === 'production') {

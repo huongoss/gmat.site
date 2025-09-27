@@ -31,9 +31,20 @@
 .navbar-links {
   list-style: none;
   display: flex;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
+}
+
+@media (min-width: 640px) {
+  .navbar-links { flex-wrap: nowrap; gap: var(--space-4); }
+}
+
+@media (max-width: 639px) {
+  .navbar { padding: var(--space-2) 0; }
+  .navbar-brand a { font-size: 1rem; }
+  .nav-link { padding: 4px 6px; font-size: .85rem; }
 }
 
 .nav-link { padding: 6px 8px; border-radius: var(--radius-sm); }

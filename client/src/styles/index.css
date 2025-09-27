@@ -5,10 +5,25 @@
   --color-surface-alt: #f1f5f9; /* slate-100 */
   --color-text: #0f172a; /* slate-900 */
   --color-text-muted: #475569; /* slate-600 */
+  /* Subtle, secondary text (less contrast than muted) */
+  --color-text-subtle: #64748b; /* slate-500 */
   --color-border: #e2e8f0; /* slate-200 */
   --color-primary: #2563eb; /* blue-600 */
   --color-primary-hover: #1d4ed8; /* blue-700 */
   --color-accent: #22c55e; /* green-500 */
+  /* Accent strong variant for marketing CTAs */
+  --color-accent-strong: #16a34a; /* green-600 */
+  --color-accent-strong-hover: #15803d; /* green-700 */
+  /* Brand gradient stops (inspired by original sample) */
+  --color-brand-start: #4338ca; /* indigo-700 */
+  --color-brand-mid: #2563eb; /* blue-600 */
+  --color-brand-end: #1d4ed8; /* blue-700 */
+  /* Optional semantic gradients (can be used later) */
+  --gradient-hero: linear-gradient(100deg, var(--color-brand-start) 0%, var(--color-brand-mid) 55%, var(--color-brand-end) 100%);
+  --gradient-pricing: linear-gradient(135deg, var(--color-surface-alt) 0%, #eef2f8 60%, #e2e8f0 100%);
+  /* Hero specific typography colors */
+  --color-hero-title: #ffffff; /* pure white for maximum contrast */
+  --color-hero-sub: #e2e8f0; /* slate-200: softer supporting text */
   --color-danger: #ef4444; /* red-500 */
   --color-header-bg: #0f172a; /* shared header/footer bg */
   --color-footer-bg: #0f172a;
@@ -31,7 +46,7 @@
 }
 
 /* Base reset */
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #root { height: 100%; }
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
@@ -40,25 +55,31 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 { color: var(--color-text); margin: 0 0 var(--space-3); }
+h1, h2, h3 { color: var(--color-text); margin: 0 0 var(--space-3); line-height: 1.25; }
+p, li { line-height: 1.55; }
 p { color: var(--color-text-muted); margin: 0 0 var(--space-3); }
 a { color: var(--color-primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* Layout */
 .app-container { min-height: 100%; display: flex; flex-direction: column; }
-.container { max-width: 1024px; margin: 0 auto; padding: 0 var(--space-5); width: 100%; }
+.container { max-width: 1024px; margin: 0 auto; padding: 0 var(--space-4); width: 100%; }
+@media (min-width: 640px) {
+  .container { padding: 0 var(--space-5); }
+}
 main { flex: 1; padding: var(--space-6) 0; }
 
 /* Button reset kept minimal */
-button { font: inherit; cursor: pointer; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); transition: all .15s ease; }
+button { font: inherit; cursor: pointer; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); transition: background-color .15s ease, box-shadow .15s ease, transform .1s ease; min-height: 44px; }
 button:hover { box-shadow: var(--shadow-sm); }
 button:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+button:active { transform: translateY(1px); }
 
 /* Class-based buttons apply to both <button> and <a> */
-.btn, .btn-outline, .btn-danger, a.btn, a.btn-outline, a.btn-danger {
+.btn, .btn-outline, .btn-danger, .btn-accent, a.btn, a.btn-outline, a.btn-danger, a.btn-accent {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -67,6 +88,7 @@ button:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset
   font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
+  min-height: 44px;
 }
 
 /* Variants */
@@ -80,20 +102,28 @@ button:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset
 .btn-danger:hover, a.btn-danger:hover { filter: brightness(0.95); }
 
 /* Focus states for anchors too */
-.btn:focus-visible, .btn-outline:focus-visible, .btn-danger:focus-visible,
-a.btn:focus-visible, a.btn-outline:focus-visible, a.btn-danger:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+.btn:focus-visible, .btn-outline:focus-visible, .btn-danger:focus-visible, .btn-accent:focus-visible,
+a.btn:focus-visible, a.btn-outline:focus-visible, a.btn-danger:focus-visible, a.btn-accent:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
 
 /* Disabled helpers */
-.btn[disabled], .btn.disabled, a.btn.disabled { opacity: .6; pointer-events: none; }
+.btn[disabled], .btn.disabled, a.btn.disabled, .btn-accent[disabled], .btn-accent.disabled, a.btn-accent.disabled { opacity: .6; pointer-events: none; }
+
+/* Accent strong variant (marketing CTA) */
+.btn-accent, a.btn-accent { background: var(--color-accent-strong); color: #fff; border: 1px solid transparent; box-shadow: var(--shadow-sm); }
+.btn-accent:hover, a.btn-accent:hover { background: var(--color-accent-strong-hover); box-shadow: var(--shadow-md); }
 
 /* Cards */
 .card, .question-card, .result-summary { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
 .card + .card { margin-top: var(--space-4); }
 
 /* Question */
-.question { margin-bottom: var(--space-4); }
+.question, .question-text { margin-bottom: var(--space-4); font-size: 1.05rem; font-weight: 600; line-height: 1.45; word-wrap: break-word; overflow-wrap: anywhere; }
+.question-text { white-space: pre-wrap; }
+@media (min-width: 640px) {
+  .question, .question-text { font-size: 1.125rem; }
+}
 .options { display: grid; gap: var(--space-3); }
-.option { text-align: left; border: 1px solid var(--color-border); background: var(--color-surface-alt); }
+.option { text-align: left; border: 1px solid var(--color-border); background: var(--color-surface-alt); width: 100%; box-sizing: border-box; touch-action: manipulation; }
 .option:hover { background: #e9eef5; }
 .option.selected { border-color: var(--color-primary); background: #e8efff; box-shadow: 0 0 0 2px rgba(37,99,235,0.25) inset; }
 
@@ -112,10 +142,21 @@ a.btn:focus-visible, a.btn-outline:focus-visible, a.btn-danger:focus-visible { o
 .mb-2 { margin-bottom: var(--space-2); } .mb-3 { margin-bottom: var(--space-3); } .mb-4 { margin-bottom: var(--space-4); } .mb-6 { margin-bottom: var(--space-6); }
 
 /* Option layout */
-.option { display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: var(--space-3); padding: var(--space-3); }
+.option { display: grid; grid-template-columns: 40px 1fr; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); }
 .option-letter { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); font-weight: 700; }
 .option.selected .option-letter { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.option-text { color: var(--color-text); }
+.option-text { color: var(--color-text); line-height: 1.45; word-break: break-word; white-space: pre-wrap; }
+
+/* Responsive tightening for very long question blocks */
+@media (min-width: 768px) {
+  .question-card { font-size: 1rem; }
+}
+
+@media (max-width: 600px) {
+  .option { grid-template-columns: 34px 1fr; padding: var(--space-2) var(--space-3); }
+  .option-letter { width: 30px; height: 30px; font-size: .8rem; }
+  .btn, .btn-outline, .btn-danger { padding: var(--space-2) var(--space-3); }
+}
 
 /* Page spacing helpers */
 .page-title { margin-bottom: var(--space-4); }
@@ -150,3 +191,37 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
 
 /* Auth layout */
 .auth-card { max-width: 480px; margin: var(--space-6) auto; }
+
+/* Layout width constraints for large screens */
+.content-narrow { width: 100%; max-width: 760px; margin: 0 auto; }
+.content-medium { width: 100%; max-width: 900px; margin: 0 auto; }
+.content-wide { width: 100%; max-width: 1100px; margin: 0 auto; }
+
+/* Center pricing grid and similar multi-card sections */
+.centered-grid { margin-left: auto; margin-right: auto; }
+@media (min-width: 1024px) {
+  .pricing-grid { max-width: 880px; }
+}
+
+/* Responsive typography scale */
+@media (min-width: 768px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+}
+@media (max-width: 767px) {
+  h1 { font-size: 1.55rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.15rem; }
+}
+
+/* Pointer/hover refinement: only apply hover styles on devices that support hover */
+@media (hover: hover) and (pointer: fine) {
+  .option:hover { background: #e9eef5; }
+  .btn:hover, a.btn:hover { background: var(--color-primary-hover); }
+}
+
+/* Prevent layout shifts on mobile due to focus outlines */
+@media (max-width: 600px) {
+  button:focus-visible, .btn:focus-visible { outline-width: 2px; }
+}
