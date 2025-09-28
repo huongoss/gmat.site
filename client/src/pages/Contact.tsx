@@ -12,7 +12,9 @@ export default function Contact() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = !submitting && emailRegex.test(email) && message.trim().length > 5;
+  const MIN_LEN = 30;
+  const trimmedMessage = message.trim();
+  const canSubmit = !submitting && emailRegex.test(email) && trimmedMessage.length >= MIN_LEN;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,16 +50,31 @@ export default function Contact() {
       <form onSubmit={onSubmit} style={{ display: success ? 'none' : 'block' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span>Name (optional)</span>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+            <span>Name</span>
+            <input required value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span>Email</span>
-            <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={email && !emailRegex.test(email) ? { borderColor: 'var(--color-danger, #c00)', outlineColor: 'var(--color-danger, #c00)' } : undefined}
+            />
+            {email && !emailRegex.test(email) && (
+              <div style={{ fontSize: '.75rem', color: 'var(--color-danger, #b00000)' }}>Enter a valid email address.</div>
+            )}
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span>Message</span>
-            <textarea required rows={6} value={message} onChange={e => setMessage(e.target.value)} placeholder="How can we help?" />
+            <span>Message <span style={{ fontWeight: 400, opacity: 0.7 }}>(min {MIN_LEN} chars)</span></span>
+            <textarea required rows={6} value={message} onChange={e => setMessage(e.target.value)} placeholder="Describe your question or issue in at least a few sentences." />
+            <div style={{ fontSize: '.75rem', opacity: 0.7 }}>
+              {trimmedMessage.length < MIN_LEN
+                ? `Need ${MIN_LEN - trimmedMessage.length} more character(s)`
+                : 'Looks good'}
+            </div>
           </label>
           <div>
             <button className="btn btn-accent" disabled={!canSubmit} type="submit">

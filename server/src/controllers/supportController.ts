@@ -4,17 +4,30 @@ import { SALES_EMAIL } from '../config/env';
 
 export const submitSupportRequest = async (req: Request, res: Response) => {
   try {
-    const { name = 'Anonymous', email, message } = req.body || {};
+    const { name, email, message } = req.body || {};
     if (!email || !message) {
       return res.status(400).json({ error: 'Email and message are required.' });
     }
-
-    // Basic length validation
-    if (message.length > 4000) {
-      return res.status(400).json({ error: 'Message too long (max 4000 chars).' });
+    const emailStr = String(email).trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailStr)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
     }
 
-    const safeName = String(name).slice(0, 100);
+    const rawName = String(name || '').trim();
+    if (!rawName) {
+      return res.status(400).json({ error: 'Name is required.' });
+    }
+
+    const trimmed = String(message).trim();
+    const MIN_LEN = 30; // Anti-spam minimal content requirement
+    if (trimmed.length < MIN_LEN) {
+      return res.status(400).json({ error: `Message too short. Please provide at least ${MIN_LEN} characters.` });
+    }
+    if (trimmed.length > 4000) {
+      return res.status(400).json({ error: 'Message too long (max 4000 chars).' });
+    }
+    const safeName = rawName.slice(0, 100);
 
     // Notify internal sales/support
     const adminSubject = `Support Request from ${safeName}`;
@@ -23,7 +36,7 @@ export const submitSupportRequest = async (req: Request, res: Response) => {
       <p><strong>Name:</strong> ${safeName}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Message:</strong></p>
-      <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(message)}</pre>
+      <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(trimmed)}</pre>
     `;
     await sendMail(SALES_EMAIL, adminSubject, adminHtml);
 
@@ -35,7 +48,7 @@ export const submitSupportRequest = async (req: Request, res: Response) => {
       <p><em>This is an automated confirmation. Please do not reply to this email.</em></p>
       <p>— GMAT.site Support</p>
     `;
-    await sendMail(email, userSubject, userHtml);
+  await sendMail(email, userSubject, userHtml);
 
     return res.json({ ok: true });
   } catch (err) {

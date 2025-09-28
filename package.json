@@ -9,7 +9,8 @@
   "scripts": {
     "client:dev": "yarn workspace gmat-practice-app-client dev",
     "server:dev": "yarn workspace gmat-practice-app-server dev",
-    "dev": "concurrently -k -n server,client -c blue,green \"yarn workspace gmat-practice-app-server dev\" \"yarn workspace gmat-practice-app-client dev\"",
+    "dev": "concurrently -k -n server,client -c blue,green \"yarn workspace gmat-practice-app-server dev\" \"yarn workspace gmat-practice-app-client dev\"", 
+    "_dev:note": "Run: yarn dev (auto reload server via tsx watch + Vite HMR for client at :5173). 'yarn build' only needed for production bundle served by Express.",
     "build": "yarn workspaces run build"
   },
   "devDependencies": {
