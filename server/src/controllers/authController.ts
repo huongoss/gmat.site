@@ -3,6 +3,7 @@ import { User } from '../models/User';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { sendVerificationEmail, generateVerificationToken, sendPasswordResetEmail } from '../services/email';
+import { decryptPassword } from '../security/keys';
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET || 'testsecret';
@@ -13,14 +14,33 @@ const getJwtSecret = () => {
 const signToken = (id: string) =>
   jwt.sign({ id }, getJwtSecret(), { expiresIn: '1h' });
 
+const extractEncryptedPassword = (body: any): string => {
+    if (!body.passwordEnc) throw new Error('MISSING_ENCRYPTED_PASSWORD');
+    return decryptPassword(body.passwordEnc);
+};
+
 const register = async (req: Request, res: Response) => {
-    const { email, password, username } = req.body as { email: string; password: string; username?: string };
+    const { email, username } = req.body as { email: string; username?: string };
 
     try {
         const exists = await User.findOne({ email });
         if (exists) return res.status(409).json({ message: 'Email already registered' });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        let plainPassword: string;
+        try {
+            plainPassword = extractEncryptedPassword(req.body);
+        } catch (e: any) {
+            if (e?.message === 'PASSWORD_DECRYPT_FAIL') {
+                return res.status(400).json({ message: 'Invalid encrypted password' });
+            }
+            if (e?.message === 'MISSING_ENCRYPTED_PASSWORD') {
+                return res.status(400).json({ message: 'Encrypted password required' });
+            }
+            return res.status(400).json({ message: 'Password processing failed' });
+        }
+        if (plainPassword.length < 8) return res.status(400).json({ message: 'Password too short' });
+
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
         const verificationToken = generateVerificationToken();
         const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -64,7 +84,7 @@ const register = async (req: Request, res: Response) => {
 };
 
 const login = async (req: Request, res: Response) => {
-    const { email, password } = req.body as { email: string; password: string };
+    const { email } = req.body as { email: string };
 
     try {
         const user = await User.findOne({ email });
@@ -72,7 +92,20 @@ const login = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        let plainPassword: string;
+        try {
+            plainPassword = extractEncryptedPassword(req.body);
+        } catch (e: any) {
+            if (e?.message === 'PASSWORD_DECRYPT_FAIL') {
+                return res.status(400).json({ message: 'Invalid encrypted password' });
+            }
+            if (e?.message === 'MISSING_ENCRYPTED_PASSWORD') {
+                return res.status(400).json({ message: 'Encrypted password required' });
+            }
+            return res.status(400).json({ message: 'Password processing failed' });
+        }
+
+        const isMatch = await bcrypt.compare(plainPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -174,7 +207,7 @@ const requestPasswordReset = async (req: Request, res: Response) => {
 };
 
 const resetPassword = async (req: Request, res: Response) => {
-    const { token, newPassword } = req.body as { token: string; newPassword: string };
+    const { token } = req.body as { token: string };
 
     try {
         const user = await User.findOne({
@@ -186,7 +219,25 @@ const resetPassword = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid or expired reset token' });
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Only accept encrypted new password field
+        let plainPassword: string;
+        try {
+            if (!req.body.newPasswordEnc) throw new Error('MISSING_ENCRYPTED_PASSWORD');
+            plainPassword = decryptPassword(req.body.newPasswordEnc);
+        } catch (e: any) {
+            if (e?.message === 'PASSWORD_DECRYPT_FAIL') {
+                return res.status(400).json({ message: 'Invalid encrypted password' });
+            }
+            if (e?.message === 'MISSING_ENCRYPTED_PASSWORD') {
+                return res.status(400).json({ message: 'Encrypted newPasswordEnc required' });
+            }
+            return res.status(400).json({ message: 'Password processing failed' });
+        }
+        if (plainPassword.length < 8) {
+            return res.status(400).json({ message: 'Password too short' });
+        }
+
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
         user.password = hashedPassword;
         user.emailVerificationToken = undefined;
         user.emailVerificationExpires = undefined;

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { encryptPassword } from '../utils/crypto';
 
 // Determine API base URL:
 // 1. Use explicit VITE_API_BASE_URL if provided.
@@ -28,13 +29,15 @@ export const getProfile = async () => {
     return res.data;
 };
 
-export const registerUser = async (userData: any) => {
-    const response = await api.post('/auth/register', userData);
+export const registerUser = async (userData: { email: string; password: string; username?: string }) => {
+    const passwordEnc = await encryptPassword(userData.password);
+    const response = await api.post('/auth/register', { email: userData.email, username: userData.username, passwordEnc });
     return response.data;
 };
 
-export const loginUser = async (credentials: any) => {
-    const response = await api.post('/auth/login', credentials);
+export const loginUser = async (credentials: { email: string; password: string }) => {
+    const passwordEnc = await encryptPassword(credentials.password);
+    const response = await api.post('/auth/login', { email: credentials.email, passwordEnc });
     return response.data;
 };
 
@@ -91,8 +94,9 @@ export const requestPasswordReset = async (email: string) => {
     return res.data;
 };
 
-export const resetPassword = async (token: string, password: string) => {
-    const res = await api.post('/auth/reset-password', { token, password });
+export const resetPassword = async (token: string, newPassword: string) => {
+    const newPasswordEnc = await encryptPassword(newPassword);
+    const res = await api.post('/auth/reset-password', { token, newPasswordEnc });
     return res.data;
 };
 

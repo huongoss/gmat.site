@@ -34,8 +34,8 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
@@ -94,7 +94,7 @@ const ResetPassword: React.FC = () => {
               value={newPassword} 
               onChange={(e) => setNewPassword(e.target.value)} 
               required 
-              minLength={6}
+              minLength={8}
               placeholder="Enter new password"
             />
           </div>
@@ -106,7 +106,7 @@ const ResetPassword: React.FC = () => {
               value={confirmPassword} 
               onChange={(e) => setConfirmPassword(e.target.value)} 
               required 
-              minLength={6}
+              minLength={8}
               placeholder="Confirm new password"
             />
           </div>
