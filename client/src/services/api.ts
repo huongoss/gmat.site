@@ -1,12 +1,19 @@
 import axios from 'axios';
 
-// Prefer explicit VITE_API_BASE_URL; fallback to server default port 8080
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api';
+// Determine API base URL:
+// 1. Use explicit VITE_API_BASE_URL if provided.
+// 2. Else if running in browser and same-origin deployment, use window.location.origin + '/api'.
+// 3. Fallback to localhost:8080 for local dev.
+const explicit = (import.meta as any).env?.VITE_API_BASE_URL;
+const sameOrigin = typeof window !== 'undefined' ? `${window.location.origin}/api` : undefined;
+const API_BASE_URL = explicit || sameOrigin || 'http://localhost:8080/api';
 
 // Create axios instance so we can set auth header globally
 const api = axios.create({
     baseURL: API_BASE_URL,
 });
+
+export const getApiBaseUrl = () => API_BASE_URL;
 
 export const setAuthToken = (token?: string) => {
     if (!token) {
