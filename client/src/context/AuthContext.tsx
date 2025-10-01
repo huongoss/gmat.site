@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const refreshProfile = async () => {
+        if (!token) return;
         try {
             const profile = await getProfile();
             setUser(profile);
@@ -52,17 +53,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const uid = profile?.id || profile?._id;
             if (uid) setUserId(String(uid));
         } catch (e: any) {
-            // If forbidden/unauthorized, clear auth state
             if (e?.response?.status === 401 || e?.response?.status === 403) {
-                setUser(null);
-                setIsAuthenticated(false);
-                setToken(undefined);
-                localStorage.removeItem('user');
-                localStorage.removeItem('token');
-                setAuthToken(undefined);
+                clearAuth();
             }
             console.warn('Failed to refresh profile:', e);
         }
+    };
+
+    const clearAuth = () => {
+        setUser(null);
+        setIsAuthenticated(false);
+        setToken(undefined);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setAuthToken(undefined);
+        setUserId(undefined);
     };
 
     const login = async (email: string, password: string) => {
@@ -76,13 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = () => {
-        setUser(null);
-        setIsAuthenticated(false);
-        setToken(undefined);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        setAuthToken(undefined);
-        setUserId(undefined);
+        clearAuth();
     };
 
     const register = async (email: string, password: string, username?: string) => {

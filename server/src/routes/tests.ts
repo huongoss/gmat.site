@@ -1,5 +1,5 @@
 import express from 'express';
-import { getQuestions, submitAnswers, getDailyQuestions, submitDailyAnswers, getUserProgress, getUserResults } from '../controllers/testController';
+import { getQuestions, submitAnswers, getDailyQuestions, submitDailyAnswers, getUserProgress } from '../controllers/testController';
 import requireAuth from '../middleware/requireAuth';
 
 const router = express.Router();
@@ -10,11 +10,9 @@ router.get('/questions', getQuestions);
 // Submit answers and get results: require auth
 router.post('/submit', requireAuth, submitAnswers);
 
-// Daily practice endpoints
+// Daily practice (authenticated)
 router.get('/daily', requireAuth, getDailyQuestions);
 router.post('/daily/submit', requireAuth, submitDailyAnswers);
-
-// User progress endpoint
-router.get('/progress', requireAuth, getUserProgress);
+router.get('/daily/progress', requireAuth, getUserProgress);
 
 export default router;

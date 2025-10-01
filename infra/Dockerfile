@@ -2,38 +2,31 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++
+# Accept build argument for Google Analytics
+ARG VITE_GA_MEASUREMENT_ID
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
 
-# Copy package files for workspace
-COPY package.json package-lock.json ./
-COPY server/package.json server/
-COPY client/package.json client/
-
-# Clean install to avoid optional dependency issues
-RUN rm -rf node_modules package-lock.json && npm install
+# Install dependencies for server and client
+COPY server/package*.json server/
+COPY client/package*.json client/
+RUN npm i --prefix server && npm i --prefix client
 
 # Copy source
 COPY . .
 
-# Set environment variables for production build
-ENV VITE_API_BASE_URL=/api
-
-# Build client and server using npm workspaces
-RUN npm run build --workspace=gmat-practice-app-client && npm run build --workspace=gmat-practice-app-server
+# Build client and server (Vite will use VITE_GA_MEASUREMENT_ID during build)
+RUN npm run build --prefix client && npm run build --prefix server
 
 # Runtime image
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy built artifacts and yarn workspace node_modules
-COPY --from=build /app/node_modules node_modules
+# Copy built artifacts and node_modules
+COPY --from=build /app/server/node_modules server/node_modules
+COPY --from=build /app/client/node_modules client/node_modules
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/client/dist client/dist
-COPY --from=build /app/package.json ./
-COPY --from=build /app/server/package.json server/
-COPY --from=build /app/client/package.json client/
 
 # Expose Cloud Run port
 EXPOSE 8080

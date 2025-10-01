@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { User } from '../models/User';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
-});
+// Initialize Stripe (omit apiVersion to use library default & avoid TS narrowing errors)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 export const createPaymentIntent = async (req: Request, res: Response) => {
   const { amount } = req.body as { amount: number };
@@ -53,8 +52,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       // If no default price, try to find an active monthly (or intervalEnv) price
       if (!resolvedPriceId) {
         const prices = await stripe.prices.list({ product: productId, active: true, limit: 50 });
-        const recurringMatch = prices.data.find((p) => p.recurring?.interval === intervalEnv);
-        const anyRecurring = prices.data.find((p) => p.recurring);
+        const recurringMatch = prices.data.find((p: Stripe.Price) => p.recurring?.interval === intervalEnv);
+        const anyRecurring = prices.data.find((p: Stripe.Price) => p.recurring);
         const anyPrice = prices.data[0];
         const chosen = recurringMatch || anyRecurring || anyPrice;
         if (chosen) resolvedPriceId = chosen.id;
@@ -135,7 +134,7 @@ export const cancelSubscription = async (req: Request, res: Response) => {
 
     // Update DB with status and period end
     u.subscriptionActive = subscription.status === 'active' || subscription.status === 'trialing';
-    u.subscriptionCurrentPeriodEnd = new Date((subscription.current_period_end || 0) * 1000);
+    u.subscriptionCurrentPeriodEnd = new Date(((subscription as any).current_period_end || 0) * 1000);
     await u.save();
 
     return res.status(200).json({
@@ -206,7 +205,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
       case 'customer.subscription.created': {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = String(sub.customer);
-        const periodEnd = new Date((sub.current_period_end || 0) * 1000);
+        const periodEnd = new Date(((sub as any).current_period_end || 0) * 1000);
         const active = sub.status === 'active' || sub.status === 'trialing';
         await User.updateMany(
           { stripeCustomerId: customerId },
@@ -274,7 +273,7 @@ export const getPricing = async (_req: Request, res: Response) => {
 
         if (!price) {
           const prices = await stripe.prices.list({ product: productId, active: true, limit: 50 });
-          price = prices.data.find((p) => p.recurring?.interval === 'month') || prices.data.find((p) => p.recurring) || prices.data[0] || null;
+          price = prices.data.find((p: Stripe.Price) => p.recurring?.interval === 'month') || prices.data.find((p: Stripe.Price) => p.recurring) || prices.data[0] || null;
         }
       } catch (e) {
         console.error('Error fetching product prices from Stripe', e);

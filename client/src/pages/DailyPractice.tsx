@@ -8,6 +8,7 @@ const DailyPractice: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // new submitting state
   const [plan, setPlan] = useState<'free' | 'pro' | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number; percentage: number } | null>(null);
   const [questions, setQuestions] = useState<Array<{ id: string; question: string; options: { id: string; text: string }[]; sequenceNumber: number }>>([]);
@@ -16,6 +17,8 @@ const DailyPractice: React.FC = () => {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [canPractice, setCanPractice] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null); // error specifically for submit
+  const [autoProgressLoaded, setAutoProgressLoaded] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -41,24 +44,42 @@ const DailyPractice: React.FC = () => {
     })();
   }, [isAuthenticated, navigate]);
 
+  // Optionally refresh progress in background (non-blocking) once
+  useEffect(() => {
+    if (!autoProgressLoaded && isAuthenticated && !submitted) {
+      (async () => {
+        try {
+          const p = await getUserProgress();
+          if (p?.progress) {
+            setProgress(p.progress);
+          }
+        } catch { /* ignore */ }
+        setAutoProgressLoaded(true);
+      })();
+    }
+  }, [autoProgressLoaded, isAuthenticated, submitted]);
+
   const total = questions.length;
   const numAnswered = useMemo(() => Object.keys(answers).length, [answers]);
 
   const onSelect = (qid: string, optionId: string) => {
+    if (submitting) return; // prevent changing answers mid-submit
     setAnswers((prev) => ({ ...prev, [qid]: optionId }));
   };
 
   const onSubmit = async () => {
     if (!user?._id) return;
+    if (numAnswered < total || total === 0) return; // guard
     try {
-      setLoading(true);
+      setSubmitError(null);
+      setSubmitting(true);
       const submitResult = await submitDailyAnswers(answers);
       setResult(submitResult);
       setSubmitted(true);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Submit failed');
+      setSubmitError(e?.response?.data?.message || e?.message || 'Submit failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -129,6 +150,7 @@ const DailyPractice: React.FC = () => {
                   className={`option ${selected ? 'selected' : ''}`}
                   role="radio"
                   aria-checked={selected}
+                  disabled={submitting}
                   onClick={() => onSelect(q.id, o.id)}
                 >
                   <span className="option-letter">{o.id.toUpperCase()}</span>
@@ -140,12 +162,14 @@ const DailyPractice: React.FC = () => {
         </div>
       ))}
 
+      {submitError && <p className="alert alert-danger" style={{ marginTop: 16 }}>{submitError}</p>}
+
       <div className="form-actions" style={{ marginTop: 24 }}>
-        <button className="btn" disabled={numAnswered < total} onClick={onSubmit}>
-          {numAnswered < total ? `Answer all (${numAnswered}/${total})` : 'Submit'}
+        <button className="btn" disabled={numAnswered < total || submitting} onClick={onSubmit}>
+          {submitting ? 'Submitting…' : numAnswered < total ? `Answer all (${numAnswered}/${total})` : 'Submit'}
         </button>
         {plan !== 'pro' && (
-          <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')}>
+          <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')} disabled={submitting}>
             Upgrade for 10/day questions
           </button>
         )}
