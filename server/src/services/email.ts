@@ -4,8 +4,12 @@ import crypto from 'crypto';
 // Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
+const BRAND_NAME = process.env.BRAND_NAME || 'GMAT Practice';
+
 export const sendMail = async (to: string, subject: string, html: string) => {
-  const from = process.env.SENDGRID_FROM_EMAIL || process.env.MAIL_FROM || 'no-reply@example.com';
+  const fromRaw = process.env.SENDGRID_FROM_EMAIL || process.env.MAIL_FROM || 'no-reply@example.com';
+  // If sender already includes a display name (has < or ") keep it; else wrap with brand name
+  const from = /</.test(fromRaw) ? fromRaw : `${BRAND_NAME} <${fromRaw}>`;
 
   if (!process.env.SENDGRID_API_KEY) {
     console.log('[DEV EMAIL]', { to, subject, html });
@@ -31,7 +35,7 @@ export const sendMail = async (to: string, subject: string, html: string) => {
 export const sendVerificationEmail = async (email: string, token: string) => {
   const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
   
-  const subject = 'Verify Your Email - GMAT Practice App';
+  const subject = `Verify Your Email - ${BRAND_NAME} App`;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -50,7 +54,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>Welcome to GMAT Practice App!</h1>
+          <h1>Welcome to ${BRAND_NAME} App!</h1>
         </div>
         <div class="content">
           <h2>Verify Your Email Address</h2>
@@ -70,7 +74,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
           <p>If you didn't create an account with us, please ignore this email.</p>
         </div>
         <div class="footer">
-          <p>© 2024 GMAT Practice App. All rights reserved.</p>
+          <p>© 2024 ${BRAND_NAME} App. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -87,7 +91,7 @@ export const generateVerificationToken = (): string => {
 export const sendPasswordResetEmail = async (email: string, token: string) => {
   const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
   
-  const subject = 'Reset Your Password - GMAT Practice App';
+  const subject = `Reset Your Password - ${BRAND_NAME} App`;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -110,7 +114,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
         </div>
         <div class="content">
           <h2>Reset Your Password</h2>
-          <p>We received a request to reset your password for your GMAT Practice App account. Click the button below to set a new password:</p>
+          <p>We received a request to reset your password for your ${BRAND_NAME} App account. Click the button below to set a new password:</p>
           
           <p style="text-align: center;">
             <a href="${resetUrl}" class="button">Reset Password</a>
@@ -126,7 +130,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
           <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
         </div>
         <div class="footer">
-          <p>© 2024 GMAT Practice App. All rights reserved.</p>
+          <p>© 2024 ${BRAND_NAME} App. All rights reserved.</p>
         </div>
       </div>
     </body>

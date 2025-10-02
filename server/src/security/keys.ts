@@ -17,6 +17,13 @@ if (!publicKeyPem || !privateKeyPem) {
 
 export const getPublicKeyPem = () => publicKeyPem;
 
+const fingerprint = (pem: string) => {
+  const hash = crypto.createHash('sha256').update(pem).digest('hex');
+  return hash.slice(0, 16); // short fingerprint
+};
+
+export const getKeyFingerprint = () => fingerprint(publicKeyPem);
+
 export const decryptPassword = (encBase64: string): string => {
   try {
     const buf = Buffer.from(encBase64, 'base64');
@@ -27,6 +34,11 @@ export const decryptPassword = (encBase64: string): string => {
     }, buf);
     return plain.toString('utf8');
   } catch (e) {
+    console.error('[security] PASSWORD_DECRYPT_FAIL', {
+      reason: (e as any)?.message,
+      keyFp: getKeyFingerprint(),
+      cipherLen: encBase64?.length
+    });
     throw new Error('PASSWORD_DECRYPT_FAIL');
   }
 };

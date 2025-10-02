@@ -20,10 +20,11 @@ const extractEncryptedPassword = (body: any): string => {
 };
 
 const register = async (req: Request, res: Response) => {
-    const { email, username } = req.body as { email: string; username?: string };
+    let { email, username } = req.body as { email: string; username?: string };
+    if (email) email = email.trim().toLowerCase();
 
     try {
-        const exists = await User.findOne({ email });
+    const exists = await User.findOne({ email });
         if (exists) return res.status(409).json({ message: 'Email already registered' });
 
         let plainPassword: string;
@@ -79,7 +80,19 @@ const register = async (req: Request, res: Response) => {
         if (error?.message === 'JWT_SECRET is not set') {
             return res.status(500).json({ message: 'Server misconfiguration: missing JWT secret' });
         }
-        res.status(500).json({ message: 'Error registering user', error });
+        // Duplicate key (email or username) guard (Mongo 11000)
+        if (error?.code === 11000) {
+            const fields = Object.keys(error.keyPattern || {});
+            if (fields.includes('email')) {
+                return res.status(409).json({ message: 'Email already registered' });
+            }
+            if (fields.includes('username')) {
+                return res.status(409).json({ message: 'Username already taken' });
+            }
+            return res.status(409).json({ message: 'Duplicate value' });
+        }
+        console.error('[register] unexpected error', error);
+        res.status(500).json({ message: 'Error registering user' });
     }
 };
 

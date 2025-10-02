@@ -2,12 +2,14 @@
 // Fetches public key once from /api/auth/public-key and caches CryptoKey
 
 let keyPromise: Promise<CryptoKey> | null = null;
+let lastFingerprint: string | null = null;
 
 async function fetchPublicKeyPem(): Promise<string> {
   const res = await fetch('/api/auth/public-key');
   if (!res.ok) throw new Error('Failed to fetch public key');
   const json = await res.json();
   if (!json.publicKey) throw new Error('Public key missing in response');
+  if (json.fingerprint) lastFingerprint = json.fingerprint as string;
   return json.publicKey as string;
 }
 
@@ -39,7 +41,16 @@ export async function encryptPassword(plain: string): Promise<string> {
     const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, data);
     return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
   } catch (e) {
-    console.warn('[crypto] Encryption failed, falling back to plaintext submit', e);
+    console.warn('[crypto] Encryption failed', e);
     throw e; // let caller decide fallback vs abort
   }
+}
+
+export function clearCachedKey() {
+  keyPromise = null;
+  lastFingerprint = null;
+}
+
+export function getKeyFingerprint() {
+  return lastFingerprint;
 }

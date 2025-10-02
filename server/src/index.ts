@@ -41,6 +41,15 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// Centralized error handler (must have 4 params for Express to recognize it)
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Always log the full error on the server
+  console.error('[ERROR]', err);
+
+  if (res.headersSent) return;
+  res.status(err.status || 500).json({ message: 'Internal server error' });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

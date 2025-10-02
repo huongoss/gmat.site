@@ -8,7 +8,7 @@ import {
 	verifyEmail, 
 	resendVerificationEmail 
 } from '../controllers/authController';
-import { getPublicKeyPem } from '../security/keys';
+import { getPublicKeyPem, getKeyFingerprint } from '../security/keys';
 import requireAuth from '../middleware/requireAuth';
 
 const router = express.Router();
@@ -21,7 +21,8 @@ router.post('/login', login);
 
 // Public key for client-side password encryption
 router.get('/public-key', (_req, res) => {
-	res.json({ publicKey: getPublicKeyPem() });
+	res.set('Cache-Control', 'no-store');
+	res.json({ publicKey: getPublicKeyPem(), fingerprint: getKeyFingerprint() });
 });
 
 // Route for getting user profile
