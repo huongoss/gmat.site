@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!--
+    High-quality sitemap for SEO:
+    - Includes public marketing pages so Google can discover them quickly
+    - Uses sensible changefreq/priority signals (informational only)
+    - lastmod set to the current date (2025-10-02) — update automatically if you have a build step that injects real lastmod values
+    NOTE: I assumed the site base URL is https://gmat.site. If your canonical domain is different (e.g. https://www.gmat.site or a staging domain), tell me and I'll update the sitemap.
+  -->
+
+  <url>
+    <loc>https://gmat.site/</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/about</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/contact</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/faq</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/pricing</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/disclaimer</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <!-- Public trial/test route (no sign-in required) -->
+  <url>
+    <loc>https://gmat.site/test</loc>
+    <lastmod>2025-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- If you want auth-only pages indexed (usually you don't), add them here. I excluded /login, /register, /account, /daily, /review because they are gated and typically should not be indexed. -->
+
+</urlset>
