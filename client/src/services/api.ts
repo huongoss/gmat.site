@@ -2,12 +2,20 @@ import axios from 'axios';
 import { encryptPassword } from '../utils/crypto';
 
 // Determine API base URL:
-// 1. Use explicit VITE_API_BASE_URL if provided.
-// 2. Else if running in browser and same-origin deployment, use window.location.origin + '/api'.
-// 3. Fallback to localhost:8080 for local dev.
+// Priority for base URL:
+// 1. Explicit VITE_API_BASE_URL always wins.
+// 2. In production (served from same origin), use window.location.origin + '/api'.
+// 3. In Vite dev (port 5173), force backend at http://localhost:8080/api to guarantee hitting server logs.
 const explicit = (import.meta as any).env?.VITE_API_BASE_URL;
-const sameOrigin = typeof window !== 'undefined' ? `${window.location.origin}/api` : undefined;
-const API_BASE_URL = explicit || sameOrigin || 'http://localhost:8080/api';
+let API_BASE_URL: string;
+if (explicit) {
+    API_BASE_URL = explicit;
+} else if (typeof window !== 'undefined') {
+    const isDev = window.location.port === '5173';
+    API_BASE_URL = isDev ? 'http://localhost:8080/api' : `${window.location.origin}/api`;
+} else {
+    API_BASE_URL = 'http://localhost:8080/api';
+}
 
 // Create axios instance so we can set auth header globally
 const api = axios.create({
@@ -74,6 +82,16 @@ export const cancelSubscription = async () => {
 
 export const getPricing = async () => {
     const res = await api.get('/payments/pricing');
+    return res.data;
+};
+
+export const fetchLiveSubscription = async () => {
+    const res = await api.get('/payments/subscription/live');
+    return res.data;
+};
+
+export const verifyCheckoutSession = async (sessionId: string) => {
+    const res = await api.get(`/payments/checkout-session/${sessionId}`);
     return res.data;
 };
 

@@ -1,6 +1,33 @@
 /* Home page redesigned layout */
 .home { display: flex; flex-direction: column; width: 100%; gap: var(--space-8); }
 
+/* Promo Banner (October) */
+.promo-banner { 
+	width: 100%;
+	background: linear-gradient(90deg, #1b1b1b, #2b2b2b);
+	color: #fff;
+	font-size: .9rem;
+	border-bottom: 1px solid #333;
+	box-shadow: 0 2px 6px rgba(0,0,0,.25);
+	position: relative;
+	z-index: 5;
+}
+.promo-banner .promo-inner { 
+	max-width: 1200px; margin: 0 auto; padding: .75rem 1rem; display: flex; gap: 1rem; align-items: center; justify-content: space-between; border-left: 4px solid var(--color-accent,#ff6b00);
+}
+.promo-banner .promo-text { display: flex; flex-direction: column; }
+.promo-banner .promo-heading { font-size: .95rem; letter-spacing: .5px; }
+.promo-banner .promo-sub { opacity: .85; font-size: .75rem; margin-top:2px; }
+.promo-banner .promo-actions { display:flex; align-items:center; gap:.5rem; }
+.promo-banner .promo-btn { background: #ff6b00; color:#fff; border:none; padding:.5rem .9rem; border-radius:4px; cursor:pointer; font-weight:600; font-size:.75rem; box-shadow:0 2px 4px rgba(0,0,0,.3); }
+.promo-banner .promo-btn:hover { background:#ff812a; }
+.promo-banner .promo-dismiss { background:transparent; border:none; color:#bbb; font-size:1.1rem; line-height:1; cursor:pointer; padding:.25rem .4rem; }
+.promo-banner .promo-dismiss:hover { color:#fff; }
+@media (max-width: 640px) { 
+	.promo-banner .promo-inner { flex-direction: column; align-items:flex-start; }
+	.promo-banner .promo-actions { align-self: stretch; justify-content: space-between; width:100%; }
+	.promo-banner .promo-heading { font-size: .85rem; }
+}
 /* Hero */
 /* Use brand gradient tokens for consistency */
 .hero { position: relative; padding: 96px var(--space-4); text-align: center; color: #fff; background: var(--gradient-hero); overflow: hidden; }

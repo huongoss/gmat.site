@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail, cancelSubscription } from '../services/api';
+import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription } from '../services/api';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -16,12 +16,35 @@ const Account: React.FC = () => {
 
     useEffect(() => {
         const status = params.get('status');
-        if (status === 'success') setMessage('Subscription updated successfully.');
+        const sessionId = params.get('session_id');
         if (status === 'cancel') setMessage('Checkout was canceled.');
-    }, [params]);
+        if (status === 'success' && sessionId) {
+            (async () => {
+                try {
+                    setMessage('Finalizing subscription...');
+                    await verifyCheckoutSession(sessionId);
+                    await refreshProfile();
+                    setMessage('Subscription updated successfully.');
+                } catch (e: any) {
+                    setError(e?.response?.data?.error || e?.message || 'Failed to verify subscription');
+                }
+            })();
+        }
+    }, [params, refreshProfile]);
 
     useEffect(() => {
-        if (isAuthenticated) refreshProfile();
+        if (isAuthenticated) {
+            (async () => {
+                await refreshProfile();
+                // After profile, force live sync to Stripe to ensure correctness
+                try {
+                    await fetchLiveSubscription();
+                    await refreshProfile();
+                } catch (e) {
+                    // silent fail; user still sees last known status
+                }
+            })();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
 
@@ -135,8 +158,9 @@ const Account: React.FC = () => {
                     </div>
                     
                     <p className="mt-2">Subscription: {user.subscriptionActive ? 'Active' : 'Inactive'}</p>
+                    {/* Next bill date display (alias of subscriptionCurrentPeriodEnd coming from server as nextBillDate) */}
                     {user.subscriptionCurrentPeriodEnd && (
-                        <p className="mt-2">Current period end: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleString()}</p>
+                        <p className="mt-2">Next bill date: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                     )}
 
                     {!user.subscriptionActive && (

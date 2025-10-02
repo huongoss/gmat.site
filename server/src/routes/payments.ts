@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createPaymentIntent, createCheckoutSession, createBillingPortalSession, cancelSubscription, getPricing } from '../services/payments';
+import { createPaymentIntent, createCheckoutSession, createBillingPortalSession, cancelSubscription, getPricing, verifyCheckoutSession, fetchLiveSubscription } from '../services/payments';
 import requireAuth from '../middleware/requireAuth';
 
 const router = Router();
@@ -18,5 +18,11 @@ router.post('/cancel', requireAuth, cancelSubscription);
 
 // Public pricing endpoint
 router.get('/pricing', getPricing);
+
+// Verify checkout session status and sync subscription
+router.get('/checkout-session/:id', verifyCheckoutSession);
+
+// Live subscription sync (requires auth)
+router.get('/subscription/live', requireAuth, fetchLiveSubscription);
 
 export default router;

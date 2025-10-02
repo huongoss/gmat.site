@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { OCTOBER_PROMO } from '../constants/promo';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, createBillingPortalSession, getPricing } from '../services/api';
 import './Pricing.css';
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [promoApplied, setPromoApplied] = useState(false);
   const { user, isAuthenticated } = useAuth();
 
   const [priceLoading, setPriceLoading] = useState(true);
@@ -25,6 +29,27 @@ const Pricing: React.FC = () => {
       }
     })();
   }, []);
+
+  // Parse promo code from query
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const promo = params.get('promo');
+    if (promo && promo.toUpperCase() === OCTOBER_PROMO.code) {
+      setPromoCode(OCTOBER_PROMO.code);
+      // Copy once if not already copied in this session
+      if (!sessionStorage.getItem('promo_copied_oct90')) {
+        navigator.clipboard.writeText(OCTOBER_PROMO.code).then(() => {
+          sessionStorage.setItem('promo_copied_oct90', '1');
+        }).catch(() => {/* ignore */});
+      }
+    }
+  }, [location.search]);
+
+  const discountedFormatted = (() => {
+    if (!promoCode || !price) return null;
+    const discounted = price.amount * (1 - OCTOBER_PROMO.discountPercent / 100);
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: price.currency.toUpperCase() }).format(discounted / 100);
+  })();
 
   const handleSubscribe = async () => {
     if (!isAuthenticated || !user?._id) return navigate('/login');
@@ -66,7 +91,14 @@ const Pricing: React.FC = () => {
           <h2 className="pricing-plan__title pricing-plan__title--pro">Monthly <span className="pricing-badge pricing-badge--float">Recommended</span></h2>
           <p className="muted pricing-plan__subtitle">For consistent improvement</p>
           <h3 className="pricing-plan__price">
-            {priceLoading ? 'Loading…' : priceError ? '—' : `${formatted} / ${price?.interval || 'month'}`}
+            {priceLoading ? 'Loading…' : priceError ? '—' : (
+              promoCode && discountedFormatted ? (
+                <span>
+                  <span style={{ textDecoration:'line-through', opacity:.6, marginRight:8 }}>{formatted}</span>
+                  <span>{discountedFormatted} / {price?.interval || 'month'}</span>
+                </span>
+              ) : `${formatted} / ${price?.interval || 'month'}`
+            )}
           </h3>
           {priceError && <p className="alert alert-danger mt-2">{priceError}</p>}
           <ul className="pricing-plan__features">
@@ -79,7 +111,7 @@ const Pricing: React.FC = () => {
           <div className="pricing-plan__actions">
             {!user?.subscriptionActive ? (
               <button className="btn-accent" onClick={handleSubscribe} disabled={priceLoading || !!priceError}>
-                {priceLoading ? 'Preparing…' : 'Upgrade to Monthly'}
+                {priceLoading ? 'Preparing…' : promoCode ? 'Apply Promo & Subscribe' : 'Upgrade to Monthly'}
               </button>
             ) : (
               <>
@@ -90,6 +122,12 @@ const Pricing: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {promoCode && !priceError && (
+        <div className="alert alert-success mt-3" role="status">
+          Promo code <strong>{promoCode}</strong> detected: {OCTOBER_PROMO.discountPercent}% off first month. Code copied to clipboard.
+        </div>
+      )}
 
       <div className="mt-4">
         <p className="muted">No hidden fees. You can cancel your subscription anytime from your account.</p>

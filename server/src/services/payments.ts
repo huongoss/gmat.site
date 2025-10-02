@@ -5,6 +5,87 @@ import { User } from '../models/User';
 // Initialize Stripe (omit apiVersion to use library default & avoid TS narrowing errors)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
+function isSubscriptionActiveStripe(status: string): boolean {
+  // Consider active access for these states
+  return ['active','trialing','past_due'].includes(status);
+}
+
+/**
+ * Retrieve the next bill (invoice) date for a subscription.
+ * Strategy:
+ * 1. Use upcoming invoice (stripe.invoices.retrieveUpcoming) which reflects next charge date.
+ * 2. Fallback to subscription.current_period_end if upcoming invoice not available (e.g., canceled at period end or free trial ended).
+ * Returns a Date or undefined if not determinable.
+ */
+async function getNextBillDate(params: { customerId: string; subscriptionId: string }): Promise<Date | undefined> {
+  const { customerId, subscriptionId } = params;
+  try {
+    // Feature-detect retrieveUpcoming (may not exist in installed stripe version)
+    const invoicesAny: any = stripe.invoices as any;
+    if (typeof invoicesAny.retrieveUpcoming === 'function') {
+      const upcoming = await invoicesAny.retrieveUpcoming({ customer: customerId, subscription: subscriptionId });
+      const ts = (upcoming as any)?.next_payment_attempt || (upcoming as any)?.due_date || (upcoming as any)?.created;
+      if (ts && ts > 0) return new Date(ts * 1000);
+      // Some invoices may instead have lines period end we can inspect
+      const periodEnd = (upcoming.lines?.data?.[0] as any)?.period?.end;
+      if (periodEnd && periodEnd > 0) return new Date(periodEnd * 1000);
+    } else {
+      console.warn('[getNextBillDate] retrieveUpcoming not supported by current stripe library version');
+    }
+  } catch (e: any) {
+    // Common reasons: no upcoming invoice (canceled, fully paid, trial ended) – silently fallback
+    console.warn('[getNextBillDate] upcoming invoice unavailable', { subscriptionId, message: e?.message });
+  }
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    const rawEnd = Number((sub as any).current_period_end) || 0;
+    if (rawEnd > 0) return new Date(rawEnd * 1000);
+    // Derive from billing_cycle_anchor + plan interval if current_period_end absent
+    try {
+      const anchorTs = Number((sub as any).billing_cycle_anchor) || 0;
+      const items: any[] = (sub as any).items?.data || [];
+      const firstPrice = items[0]?.price;
+      const recurring = firstPrice?.recurring;
+      if (anchorTs > 0 && recurring?.interval) {
+        const interval = recurring.interval as string; // 'day' | 'week' | 'month' | 'year'
+        const intervalCount = recurring.interval_count || 1;
+        let candidate = new Date(anchorTs * 1000);
+        const now = Date.now();
+        // Advance candidate forward until it's in the future (avoid excessive loops by capping)
+        let safety = 0;
+        while (candidate.getTime() <= now && safety < 60) {
+          switch (interval) {
+            case 'day':
+              candidate.setDate(candidate.getDate() + intervalCount);
+              break;
+            case 'week':
+              candidate.setDate(candidate.getDate() + 7 * intervalCount);
+              break;
+            case 'month':
+              candidate.setMonth(candidate.getMonth() + intervalCount);
+              break;
+            case 'year':
+              candidate.setFullYear(candidate.getFullYear() + intervalCount);
+              break;
+            default:
+              safety = 60; // unsupported interval; break loop
+              break;
+          }
+          safety++;
+        }
+        if (candidate.getTime() > now && safety < 60) {
+          return candidate;
+        }
+      }
+    } catch (calcErr) {
+      console.warn('[getNextBillDate] billing_cycle_anchor computation failed', { subscriptionId, message: (calcErr as any)?.message });
+    }
+  } catch (e) {
+    console.warn('[getNextBillDate] subscription fallback failed', { subscriptionId, message: (e as any)?.message });
+  }
+  return undefined;
+}
+
 export const createPaymentIntent = async (req: Request, res: Response) => {
   const { amount } = req.body as { amount: number };
 
@@ -85,11 +166,12 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       }
     }
 
+    const clientBase = (process.env.CLIENT_URL || '').replace(/\/$/, '') || `${getBaseUrl(req)}`;
     const successUrl =
       (req.body?.successUrl as string) ||
-      `${getBaseUrl(req)}/account?status=success&session_id={CHECKOUT_SESSION_ID}`;
+      `${clientBase}/account?status=success&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl =
-      (req.body?.cancelUrl as string) || `${getBaseUrl(req)}/account?status=cancel`;
+      (req.body?.cancelUrl as string) || `${clientBase}/account?status=cancel`;
     const userId = (req.body?.userId as string) || undefined;
 
     let customer: string | undefined;
@@ -117,6 +199,138 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
   }
 };
 
+export const verifyCheckoutSession = async (req: Request, res: Response) => {
+  const sessionId = req.params.id;
+  if (!sessionId) return res.status(400).json({ error: 'Missing session id' });
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    // Process subscription sessions; some may report status 'open' briefly but still have subscription
+    if (session.mode === 'subscription' && session.subscription && session.customer) {
+      const subId = String(session.subscription);
+      const customerId = String(session.customer);
+      console.log('[verifyCheckoutSession] session', { sessionId, status: session.status, subId, customerId, clientRef: session.client_reference_id });
+      // Try to locate user by several strategies
+      let user: any = null;
+      if (session.client_reference_id) {
+        user = await User.findById(session.client_reference_id);
+      }
+      if (!user) {
+        user = await User.findOne({ stripeCustomerId: customerId });
+      }
+      if (!user && (session as any).customer_details?.email) {
+        // Fallback by email (normalize lowercase)
+        const email = String((session as any).customer_details.email).toLowerCase();
+        user = await User.findOne({ email });
+        if (user && !user.stripeCustomerId) user.stripeCustomerId = customerId;
+      }
+      if (user) {
+        user.subscriptionActive = true;
+        user.stripeCustomerId = customerId;
+        user.stripeSubscriptionId = subId;
+        // Fetch subscription for period end
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subId);
+          const rawEnd = Number((subscription as any).current_period_end) || 0;
+          if (rawEnd > 0) {
+            (user as any).subscriptionCurrentPeriodEnd = new Date(rawEnd * 1000);
+          } else {
+            console.warn('[verifyCheckoutSession] missing current_period_end on subscription', { subId });
+          }
+          const status = subscription.status;
+          user.subscriptionActive = isSubscriptionActiveStripe(status);
+          console.log('[verifyCheckoutSession] subscription retrieved', { status, active: user.subscriptionActive, periodEnd: rawEnd, userId: user.id });
+        } catch (e) {
+          console.warn('[verifyCheckoutSession] subscription retrieve failed', (e as any)?.message);
+        }
+        await user.save();
+      }
+    }
+    // Derive next bill date from upcoming invoice (fallback to period end) if subscription present
+    let nextBillDate: Date | undefined;
+    if (session.mode === 'subscription' && session.subscription && session.customer) {
+      try {
+        nextBillDate = await getNextBillDate({ customerId: String(session.customer), subscriptionId: String(session.subscription) });
+      } catch (e) {
+        console.warn('[verifyCheckoutSession] getNextBillDate failed', (e as any)?.message);
+      }
+    }
+    return res.status(200).json({ status: session.status, subscription: session.subscription, customer: session.customer, nextBillDate: nextBillDate || null });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || 'Failed to verify session' });
+  }
+};
+
+export const fetchLiveSubscription = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any)?.id as string | undefined;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.email) return res.status(400).json({ error: 'User missing email' });
+
+    const email = user.email.toLowerCase();
+    // Find customer in Stripe by email (ignore stored stripeSubscriptionId per request)
+    const custList = await stripe.customers.list({ email, limit: 5 });
+    const customer = custList.data[0];
+    if (!customer) {
+      console.log('[fetchLiveSubscription] no Stripe customer for email', email);
+      user.subscriptionActive = false;
+      await user.save();
+      return res.status(200).json({ subscriptionActive: false });
+    }
+    const customerId = customer.id;
+    if (!user.stripeCustomerId || user.stripeCustomerId !== customerId) {
+      user.stripeCustomerId = customerId; // sync / repair
+    }
+
+    // List subscriptions for this customer, prefer active/trialing/past_due; fallback to most recent
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 20 });
+    const prioritized = subs.data.filter(s => ['active','trialing','past_due'].includes(s.status));
+    let chosen = prioritized[0];
+    if (!chosen && subs.data.length) {
+      // pick the subscription with the latest current_period_end
+      chosen = subs.data.slice().sort((a,b) => ((b as any).current_period_end||0) - ((a as any).current_period_end||0))[0];
+    }
+
+    if (!chosen) {
+      console.log('[fetchLiveSubscription] no subscriptions for customer', { customerId });
+      user.subscriptionActive = false;
+      await user.save();
+      return res.status(200).json({ subscriptionActive: false });
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(chosen.id);
+    const status = subscription.status;
+    user.stripeSubscriptionId = subscription.id; // store latest we found
+    user.subscriptionActive = ['active','trialing','past_due'].includes(status);
+    const rawEnd = Number((subscription as any).current_period_end) || 0;
+    if (rawEnd > 0) (user as any).subscriptionCurrentPeriodEnd = new Date(rawEnd * 1000); // provisional fallback
+    let nextBillDate: Date | undefined;
+    try {
+      nextBillDate = await getNextBillDate({ customerId, subscriptionId: subscription.id });
+      if (nextBillDate) (user as any).subscriptionCurrentPeriodEnd = nextBillDate; // store canonical next bill date
+    } catch (e) {
+      console.warn('[fetchLiveSubscription] getNextBillDate failed', (e as any)?.message);
+    }
+    if (!rawEnd && !nextBillDate) {
+      console.warn('[fetchLiveSubscription] neither current_period_end nor upcoming invoice available', { id: subscription.id, status });
+    }
+    await user.save();
+    console.log('[fetchLiveSubscription] subscription detail', { id: subscription.id, status, active: user.subscriptionActive, periodEnd: rawEnd, customerId });
+
+    return res.status(200).json({
+      subscriptionActive: user.subscriptionActive,
+      status,
+      subscriptionId: subscription.id,
+      nextBillDate: (user as any).subscriptionCurrentPeriodEnd || null
+    });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || 'Failed to fetch subscription' });
+  }
+};
+
 export const cancelSubscription = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any)?.id as string | undefined;
@@ -140,7 +354,7 @@ export const cancelSubscription = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: 'Subscription will cancel at period end.',
       status: subscription.status,
-      current_period_end: u.subscriptionCurrentPeriodEnd,
+      nextBillDate: u.subscriptionCurrentPeriodEnd || null,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message ?? 'Failed to cancel subscription' });

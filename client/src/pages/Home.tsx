@@ -2,12 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
 import { trackEvent } from '../utils/analytics';
+import PromoBanner from '../components/PromoBanner';
 
 const bgUrl = 'https://images.unsplash.com/photo-1596496056700-5c4f7a4b93f4?auto=format&fit=crop&w=1600&q=80';
 
 const Home: React.FC = () => {
   return (
     <div className="home">
+      <PromoBanner />
       {/* Hero Section */}
   <section className="hero section-base" aria-labelledby="hero-heading">
         <div className="hero-bg" style={{ backgroundImage: `url(${bgUrl})` }} aria-hidden="true" />
