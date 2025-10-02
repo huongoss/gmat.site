@@ -82,42 +82,78 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const isPro = !!user.subscriptionActive;
-        const questionsPerDay = isPro ? 10 : 2;
+        const maxDaily = isPro ? 10 : 2;
         const bankSize = isPro ? 1000 : 100;
+        const todayKey = new Date().toDateString();
 
-        // Check if user has already completed practice today (not just got questions)
-        const today = new Date().toDateString();
-        const lastPracticeCompleted = user.lastDailyDate ? user.lastDailyDate.toDateString() : null;
-        
-        if (lastPracticeCompleted === today && !isPro) {
-            return res.status(200).json({ 
-                message: 'You have already completed today\'s practice. Come back tomorrow!', 
-                questions: [], 
+        // If user already submitted today (lastDailyDate marks completion), block further practice
+        if (user.lastDailyDate && user.lastDailyDate.toDateString() === todayKey) {
+            return res.status(200).json({
+                message: 'Daily practice already completed. Come back tomorrow!',
+                questions: [],
                 canPractice: false,
                 progress: user.currentQuestionIndex || 0,
                 totalQuestions: bankSize,
-                plan: 'free'
+                plan: isPro ? 'pro' : 'free'
             });
         }
 
-        // For users: serve next questions sequentially from current progress
+        // Reset daily allocation if date changed
+        if (!user.dailyQuestionsDate || user.dailyQuestionsDate.toDateString() !== todayKey) {
+            user.dailyQuestionsDate = new Date();
+            user.dailyQuestionIds = [];
+            user.dailyQuestionCount = 0;
+        }
+
+        // If already allocated full quota, return same set (or none if none allocated - should not happen)
+        if (user.dailyQuestionCount && user.dailyQuestionCount >= maxDaily) {
+            if (!user.dailyQuestionIds || user.dailyQuestionIds.length === 0) {
+                return res.status(200).json({
+                    message: 'Daily quota reached',
+                    questions: [],
+                    canPractice: false,
+                    progress: user.currentQuestionIndex || 0,
+                    totalQuestions: bankSize,
+                    plan: isPro ? 'pro' : 'free'
+                });
+            }
+            // Re-fetch the stored questions to return consistent payload
+            const storedQs = await Question.find({ _id: { $in: user.dailyQuestionIds } }, { questionText: 1, options: 1, correctAnswer: 1 }).lean();
+            const payloadStored = storedQs.map((q: any) => ({
+                id: String(q._id),
+                question: q.questionText,
+                options: (q.options || []).map((text: string, idx: number) => ({ id: String.fromCharCode(97 + idx), text })),
+                sequenceNumber: undefined // sequence not critical for repeated view
+            }));
+            return res.status(200).json({
+                message: 'Daily quota already allocated',
+                questions: payloadStored,
+                canPractice: true,
+                progress: user.currentQuestionIndex || 0,
+                totalQuestions: bankSize,
+                plan: isPro ? 'pro' : 'free'
+            });
+        }
+
+        // Determine how many to allocate now
+        const remaining = maxDaily - (user.dailyQuestionCount || 0);
+        const toAllocate = Math.min(remaining, maxDaily); // allocate remainder
+
+        // Determine start index for sequential progression across the bank
         let startIndex = user.currentQuestionIndex || 0;
-        
-        // Reset to beginning if completed all questions
         if (startIndex >= bankSize) {
             startIndex = 0;
             user.currentQuestionIndex = 0;
-            await user.save();
         }
 
-        // Get questions from database
-        const questions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1 })
+        const newQuestions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1 })
             .sort({ _id: 1 })
             .skip(startIndex)
-            .limit(questionsPerDay)
+            .limit(toAllocate)
             .lean();
 
-        if (questions.length === 0) {
+        if (newQuestions.length === 0) {
+            await user.save();
             return res.status(200).json({
                 message: 'No questions available at this time',
                 questions: [],
@@ -128,22 +164,27 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
             });
         }
 
-        const payload = questions.map((q, index) => ({
-            id: String((q as any)._id),
+        const newIds = newQuestions.map(q => String((q as any)._id));
+        user.dailyQuestionIds = [...(user.dailyQuestionIds || []), ...newIds];
+        user.dailyQuestionCount = (user.dailyQuestionCount || 0) + newQuestions.length;
+        // Do NOT advance currentQuestionIndex until submission, to preserve scoring order
+        await user.save();
+
+        const payload = newQuestions.map((q: any, idx: number) => ({
+            id: String(q._id),
             question: q.questionText,
-            options: (q.options || []).map((text: string, idx: number) => ({ 
-                id: String.fromCharCode(97 + idx), 
-                text 
-            })),
-            sequenceNumber: startIndex + index + 1 // Show user which question number this is (1-100)
+            options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
+            sequenceNumber: startIndex + idx + 1
         }));
 
-        return res.status(200).json({ 
-            questions: payload, 
+        return res.status(200).json({
+            questions: payload,
             plan: isPro ? 'pro' : 'free',
-            progress: startIndex,
+            progress: user.currentQuestionIndex || 0,
             totalQuestions: bankSize,
-            canPractice: true
+            canPractice: true,
+            allocated: user.dailyQuestionCount,
+            remaining: maxDaily - (user.dailyQuestionCount || 0)
         });
 
     } catch (error) {
@@ -167,6 +208,17 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
 
         const questionIds = Object.keys(answers);
         const questionsPerDay = user.subscriptionActive ? 10 : 2;
+
+        // Enforce answering only today's allocated questions
+        if (!user.dailyQuestionIds || user.dailyQuestionIds.length === 0) {
+            return res.status(400).json({ message: 'No daily questions allocated for today' });
+        }
+        const allocatedSet = new Set(user.dailyQuestionIds);
+        for (const qid of questionIds) {
+            if (!allocatedSet.has(qid)) {
+                return res.status(400).json({ message: 'Attempting to submit answers for non-allocated daily questions' });
+            }
+        }
 
         // Get the questions with correct answers
         const questions = await Question.find({ _id: { $in: questionIds } }).lean();
@@ -210,8 +262,15 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
         await result.save();
 
         // Update user progress
-        user.currentQuestionIndex = (user.currentQuestionIndex || 0) + questionsPerDay;
-        user.lastDailyDate = new Date();
+    // Determine daily max for this user (recompute here for clarity)
+    const maxDailySubmit = user.subscriptionActive ? 10 : 2;
+    const increment = user.dailyQuestionIds.length;
+    user.currentQuestionIndex = (user.currentQuestionIndex || 0) + increment;
+    user.lastDailyDate = new Date(); // mark completion
+    user.dailyQuestionCount = maxDailySubmit;
+    // Clear allocation after successful submission to avoid re-use and to allow clean fetch tomorrow only
+    user.dailyQuestionIds = [];
+    user.dailyQuestionsDate = new Date();
         await user.save();
 
         return res.status(200).json({

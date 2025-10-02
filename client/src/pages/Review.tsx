@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import ResultSummary from '../components/ResultSummary';
 import EmotionFeedback from '../components/EmotionFeedback';
+import { fetchUserResults } from '../services/api';
 
 const Review: React.FC = () => {
     const { user } = useAuth();
@@ -11,14 +12,10 @@ const Review: React.FC = () => {
     useEffect(() => {
         const fetchResults = async () => {
             try {
-                if (user) {
-                    const response = await fetch(`/api/results/${user.id}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        setResults(Array.isArray(data) ? data : []);
-                    } else {
-                        setResults([]);
-                    }
+                if (user?._id || (user as any)?.id) {
+                    const id = (user as any)._id || (user as any).id;
+                    const data = await fetchUserResults(id);
+                    setResults(Array.isArray(data) ? data : []);
                 }
             } catch (e) {
                 setResults([]);

@@ -19,6 +19,9 @@ interface IUser extends Document {
     // Simple progress tracking for free users: x/100 questions completed
     currentQuestionIndex: number; // 0-99 for free users (tracks progress)
     lastDailyDate?: Date; // When user last completed daily practice
+    dailyQuestionsDate?: Date; // Date for which dailyQuestionIds were allocated
+    dailyQuestionIds?: string[]; // IDs of allocated daily questions for that date
+    dailyQuestionCount?: number; // Number of daily questions served today (for safety)
 }
 
 const UserSchema: Schema = new Schema({
@@ -40,6 +43,9 @@ const UserSchema: Schema = new Schema({
     // Simple progress tracking for free users: x/100 questions completed
     currentQuestionIndex: { type: Number, default: 0 }, // 0-99 for free users
     lastDailyDate: { type: Date }, // When user last completed daily practice
+    dailyQuestionsDate: { type: Date },
+    dailyQuestionIds: { type: [String], default: [] },
+    dailyQuestionCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>('User', UserSchema);

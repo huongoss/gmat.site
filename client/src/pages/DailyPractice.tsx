@@ -68,8 +68,19 @@ const DailyPractice: React.FC = () => {
   };
 
   const onSubmit = async () => {
-    if (!user?._id) return;
-    if (numAnswered < total || total === 0) return; // guard
+    const uid = (user && (user._id || user.id)) as string | undefined;
+    if (!uid) {
+      setSubmitError('User not loaded. Please re-login.');
+      return;
+    }
+    if (total === 0) {
+      setSubmitError('No questions to submit.');
+      return;
+    }
+    if (numAnswered < total) {
+      setSubmitError(`Please answer all questions (${numAnswered}/${total}).`);
+      return;
+    }
     try {
       setSubmitError(null);
       setSubmitting(true);
