@@ -75,24 +75,20 @@ JWT_SECRET=change_me_dev
 NODE_ENV=development
 ```
 
-For production deployment use `infra/env.example.yaml` as a reference and create `infra/env.yaml` (DO NOT store real secrets in git):
+For production deployment use `infra/env.example.yaml` as a reference and create `infra/env.yaml` (DO NOT store real secrets in git). You can either supply discrete env vars or (recommended) load everything from a single Secret Manager blob (see “Single Secret Strategy” below):
 
 ```yaml
 MONGODB_URI: "<your prod mongo uri>"
 JWT_SECRET: "<strong secret>"
 NODE_ENV: "production"
 CLIENT_URL: "https://gmat.site"
-STRIPE_SECRET_KEY: "<secret manager ref or leave out>"
-STRIPE_WEBHOOK_SECRET: "<secret>"
-STRIPE_PRICE_ID: "<price_xxx>"
+STRIPE_SECRET_KEY: "<secret>"
+STRIPE_WEBHOOK_SECRET: "<webhook secret>"
+STRIPE_PRODUCT_ID: "<product id>" # or use price id
+STRIPE_PRICE_ID: "<price_xxx>"    # optional if deriving from product
 CLOUD_RUN_SERVICE_NAME: "gmat-practice-app"
 SENDGRID_API_KEY: "<key>"
 SENDGRID_FROM_EMAIL: "no-reply@gmat.site"
-# Optional for X.509 / TLS pinning
-MONGODB_TLS_CERT: |
-  -----BEGIN CERTIFICATE-----
-  (redacted)
-  -----END CERTIFICATE-----
 ```
 
 Recommended: move sensitive values to **Google Secret Manager** and inject at deploy time.
@@ -160,14 +156,26 @@ docker run -p 8080:8080 \
 gcloud builds submit --config=infra/cloudbuild.yaml .
 ```
 
-Then deploy:
+Then deploy (single secret blob strategy):
 
+```bash
+# Ensure you've run: ./scripts/publish-app-env-blob.sh (creates secret: app-env-blob)
+gcloud run deploy gmat-practice-app \
+  --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
+  --region us-central1 \
+  --platform managed \
+  --set-secrets=APP_ENV_BLOB=app-env-blob:latest \
+  --port 8080
+```
+
+If you still prefer discrete env vars instead of the blob, use:
 ```bash
 gcloud run deploy gmat-practice-app \
   --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
   --region us-central1 \
   --platform managed \
-  --env-vars-file infra/env.yaml \
+  --set-secrets=MONGODB_URI=mongo-uri:latest,JWT_SECRET=jwt-secret:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,SENDGRID_API_KEY=sendgrid-api-key:latest \
+  --set-env-vars=CLIENT_URL=https://gmat.site,SENDGRID_FROM_EMAIL=sale@gmat.site,STRIPE_PRODUCT_ID=prod_xxx,STRIPE_PRICE_ID= \
   --port 8080
 ```
 
@@ -180,8 +188,22 @@ docker build -f infra/Dockerfile -t gmat-practice-app .
 docker tag gmat-practice-app us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest
 # Push
 docker push us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest
-# Deploy
-gcloud run deploy gmat-practice-app --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest --region us-central1 --platform managed --env-vars-file infra/env.yaml --port 8080
+# Deploy with single secret
+gcloud run deploy gmat-practice-app \
+  --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
+  --region us-central1 \
+  --platform managed \
+  --set-secrets=APP_ENV_BLOB=app-env-blob:latest \
+  --port 8080
+
+# OR deploy with individual secrets (alternative)
+gcloud run deploy gmat-practice-app \
+  --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
+  --region us-central1 \
+  --platform managed \
+  --set-secrets=MONGODB_URI=mongo-uri:latest,JWT_SECRET=jwt-secret:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,SENDGRID_API_KEY=sendgrid-api-key:latest \
+  --set-env-vars=CLIENT_URL=https://gmat.site,SENDGRID_FROM_EMAIL=sale@gmat.site,STRIPE_PRODUCT_ID=prod_xxx,STRIPE_PRICE_ID= \
+  --port 8080
 ```
 
 ## Security Notes
@@ -191,6 +213,64 @@ gcloud run deploy gmat-practice-app --image us-central1-docker.pkg.dev/gmat-4721
 - Prefer principle of least privilege for MongoDB user.
 - Set `JWT_SECRET` to a long random string (>= 32 chars).
 - Enable Cloud Logging & Error Reporting for observability.
+
+## Single Secret Strategy (APP_ENV_BLOB)
+
+Instead of managing many individual secrets (Mongo URI, Stripe keys, SendGrid, JWT, etc.), you can bundle all `KEY=VALUE` lines into one Secret Manager secret and inject it as `APP_ENV_BLOB`. The server env loader (`server/src/config/env.ts`) parses this blob at startup and populates `process.env` for any key not already explicitly set.
+
+### Why
+Pros:
+- Fewer Secret Manager IAM bindings
+- One rotation step updates everything
+Cons:
+- Harder to audit individual key changes (entire blob version changes)
+- Accidental removal of a line affects that variable
+
+### Steps
+1. Maintain authoritative values in `server/.env` (local only; git‑ignored).
+2. Run script to publish combined secret:
+   ```bash
+   ./scripts/publish-app-env-blob.sh
+   ```
+3. Deploy Cloud Run with `infra/cloudrun/service.yaml` that references:
+   ```yaml
+   env:
+     - name: APP_ENV_BLOB
+       valueFrom:
+         secretKeyRef:
+           name: app-env-blob
+   ```
+4. On rotation change values in `.env`, re-run the script, redeploy.
+
+### Script Details
+`scripts/publish-app-env-blob.sh`:
+- Strips comments / blank lines
+- Creates (or versions) `app-env-blob`
+- Grants `roles/secretmanager.secretAccessor` to the Cloud Run service account
+
+### Validating
+Check logs after deploy:
+```
+[mongo] connected
+``` 
+Trigger a login or Stripe call to ensure keys loaded.
+
+## Secret Rotation Workflow
+
+1. Update `server/.env` with new values (e.g. rotate Stripe + JWT).
+2. Run publish script (adds new secret version).
+3. Deploy service YAML.
+4. Invalidate old Stripe / SendGrid keys in provider dashboards.
+5. (JWT) Old tokens become invalid if you changed the signing secret.
+
+## Runtime Env Validation (Optional Enhancement)
+You can add a lightweight check in `server/src/index.ts` after connection logic:
+```ts
+['MONGODB_URI','JWT_SECRET','STRIPE_SECRET_KEY'].forEach(k=>{
+  if(!process.env[k]) console.warn(`[config] Missing ${k}`);
+});
+```
+Remove once stable.
 
 ## Roadmap / Next Steps
 

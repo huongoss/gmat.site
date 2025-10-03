@@ -22,6 +22,10 @@ interface IUser extends Document {
     dailyQuestionsDate?: Date; // Date for which dailyQuestionIds were allocated
     dailyQuestionIds?: string[]; // IDs of allocated daily questions for that date
     dailyQuestionCount?: number; // Number of daily questions served today (for safety)
+    // New daily system (carry-over based)
+    dailyCarryOver?: number; // Remaining entitlement slots (including today + accumulated)
+    dailyConsumedToday?: number; // How many consumed on the current server day
+    dailyLastSubmitDate?: Date; // Date of last submission affecting daily counters
 }
 
 const UserSchema: Schema = new Schema({
@@ -46,6 +50,10 @@ const UserSchema: Schema = new Schema({
     dailyQuestionsDate: { type: Date },
     dailyQuestionIds: { type: [String], default: [] },
     dailyQuestionCount: { type: Number, default: 0 },
+    // New daily system
+    dailyCarryOver: { type: Number, default: 0 },
+    dailyConsumedToday: { type: Number, default: 0 },
+    dailyLastSubmitDate: { type: Date },
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>('User', UserSchema);

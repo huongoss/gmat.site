@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/env';
 import mongoose from 'mongoose';
 import path from 'path';
 import { promises as fs } from 'fs';

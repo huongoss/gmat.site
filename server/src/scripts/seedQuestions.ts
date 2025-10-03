@@ -1,3 +1,4 @@
+import '../config/env'; // load environment variables (supports APP_ENV_BLOB or .env)
 import mongoose from 'mongoose';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -6,9 +7,9 @@ import Question from '../models/Question';
 // Connect to database
 const connectDB = async () => {
     try {
-        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/gmat-practice';
+        const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/gmat-practice';
         await mongoose.connect(mongoUri);
-        console.log('Connected to MongoDB');
+        console.log('[seedQuestions] Connected to MongoDB:', mongoUri.replace(/(:)([^:@\/]{4})[^:@]*(?=@)/, '$1$2****'));
     } catch (error) {
         console.error('MongoDB connection error:', error);
         process.exit(1);

@@ -13,20 +13,11 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: NODE_ENV
-              value: production
-            - name: MONGODB_URI
-              value: "mongodb+srv://free.cppzndx.mongodb.net/?authSource=$external&authMechanism=MONGODB-X509&retryWrites=true&w=majority&appName=free"
-            - name: MONGODB_TLS_CERT
-              valueSource:
+            # Single secret containing newline-delimited KEY=VALUE pairs parsed into process.env by env loader.
+            - name: APP_ENV_BLOB
+              valueFrom:
                 secretKeyRef:
-                  secret: mongodb-client-pem
-                  version: 'latest'
-            - name: JWT_SECRET
-              valueSource:
-                secretKeyRef:
-                  secret: jwt-secret
-                  version: 'latest'
+                  name: app-env-blob
   traffic:
     - latestRevision: true
       percent: 100

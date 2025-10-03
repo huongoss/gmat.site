@@ -1,7 +1,8 @@
-import 'dotenv/config';
+import './config/env';
 import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
+// X.509 support removed; simplified SCRAM/password connection only
 import authRoutes from './routes/auth';
 import testRoutes from './routes/tests';
 import resultRoutes from './routes/results';
@@ -12,6 +13,18 @@ import crypto from 'crypto';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8080;
+
+// Optional config diagnostics (enable by setting DEBUG_CONFIG=1)
+if (process.env.DEBUG_CONFIG === '1') {
+  const keys = ['MONGODB_URI','JWT_SECRET','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','SENDGRID_API_KEY'];
+  const report: Record<string,string> = {};
+  for (const k of keys) {
+    const v = process.env[k];
+    report[k] = v ? `present(len=${v.length})` : 'MISSING';
+  }
+  console.log('[config-diagnostics]', report);
+  if (!process.env.MONGODB_URI) console.warn('[config] MONGODB_URI not set; will fallback to local default');
+}
 
 // Middleware
 app.use(cors());
@@ -27,14 +40,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database connection
-mongoose
-  .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gmat-practice', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err: unknown) => console.error('MongoDB connection error:', err));
+async function connectMongo(retries = 5) {
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/gmat-practice';
+  const opts: any = {
+    serverSelectionTimeoutMS: 8000,
+    socketTimeoutMS: 20000,
+  };
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[mongo] attempt ${attempt} -> ${uri.split('@').pop()}`);
+      await mongoose.connect(uri, opts);
+      console.log('[mongo] connected');
+      return;
+    } catch (err:any) {
+      const code = err?.code || err?.name;
+      console.error(`[mongo] FAIL attempt ${attempt} code=${code} msg=${err?.message}`);
+      if (/auth/i.test(err?.message || '')) {
+        console.error('[mongo] Authentication error: verify username/password in MONGODB_URI.');
+      }
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, attempt * 1500));
+    }
+  }
+}
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -76,7 +104,13 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(err.status || 500).json({ message: 'Internal server error' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Start after DB is ready
+connectMongo()
+  .then(() => {
+    app.listen(PORT, () => console.log(`Server listening on port ${PORT} (DB ready)`));
+  })
+  .catch(err => {
+    console.error('[startup] FATAL Mongo connection failure');
+    console.error(err);
+    process.exit(1);
+  });

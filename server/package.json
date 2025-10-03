@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seedQuestions.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -98,11 +98,14 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
             });
         }
 
-        // Reset daily allocation if date changed
-        if (!user.dailyQuestionsDate || user.dailyQuestionsDate.toDateString() !== todayKey) {
-            user.dailyQuestionsDate = new Date();
+        // Allow manual reset for debugging (e.g., /api/daily?forceReset=1) - only in non-production if needed
+        const forceReset = req.query.forceReset === '1';
+
+        // Reset daily allocation if date changed OR force reset
+        if (forceReset || !user.dailyQuestionsDate || user.dailyQuestionsDate.toDateString() !== todayKey) {
             user.dailyQuestionIds = [];
             user.dailyQuestionCount = 0;
+            // Don't set dailyQuestionsDate yet; wait until we successfully allocate to avoid a stale date with zero questions
         }
 
         // If already allocated full quota, return same set (or none if none allocated - should not happen)
@@ -153,6 +156,41 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
             .lean();
 
         if (newQuestions.length === 0) {
+            // If we reached here with no questions it's likely the bank is empty OR startIndex exceeded actual documents.
+            // Add a defensive check: count total questions to help diagnose.
+            const totalInDB = await Question.countDocuments();
+            // If startIndex beyond totalInDB, wrap and try again once.
+            if (startIndex >= totalInDB && totalInDB > 0) {
+                const retryQuestions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1 })
+                    .sort({ _id: 1 })
+                    .limit(toAllocate)
+                    .lean();
+                if (retryQuestions.length > 0) {
+                    const retryIds = retryQuestions.map(q => String((q as any)._id));
+                    user.dailyQuestionIds = retryIds;
+                    user.dailyQuestionCount = retryQuestions.length;
+                    user.dailyQuestionsDate = new Date();
+                    await user.save();
+                    const retryPayload = retryQuestions.map((q: any, idx: number) => ({
+                        id: String(q._id),
+                        question: q.questionText,
+                        options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
+                        sequenceNumber: idx + 1
+                    }));
+                    return res.status(200).json({
+                        questions: retryPayload,
+                        plan: isPro ? 'pro' : 'free',
+                        progress: user.currentQuestionIndex || 0,
+                        totalQuestions: bankSize,
+                        canPractice: true,
+                        allocated: user.dailyQuestionCount,
+                        remaining: maxDaily - (user.dailyQuestionCount || 0),
+                        note: 'Wrapped to start of bank after index overflow'
+                    });
+                }
+            }
+
+            // Persist reset state only (no date) and inform client.
             await user.save();
             return res.status(200).json({
                 message: 'No questions available at this time',
@@ -160,13 +198,18 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
                 canPractice: false,
                 progress: startIndex,
                 totalQuestions: bankSize,
-                plan: isPro ? 'pro' : 'free'
+                plan: isPro ? 'pro' : 'free',
+                diagnostics: { totalInDB, startIndex, toAllocate }
             });
         }
 
         const newIds = newQuestions.map(q => String((q as any)._id));
         user.dailyQuestionIds = [...(user.dailyQuestionIds || []), ...newIds];
         user.dailyQuestionCount = (user.dailyQuestionCount || 0) + newQuestions.length;
+        // Only now set the date to mark that allocation for today exists
+        if (!user.dailyQuestionsDate || user.dailyQuestionsDate.toDateString() !== todayKey) {
+            user.dailyQuestionsDate = new Date();
+        }
         // Do NOT advance currentQuestionIndex until submission, to preserve scoring order
         await user.save();
 
@@ -270,7 +313,7 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
     user.dailyQuestionCount = maxDailySubmit;
     // Clear allocation after successful submission to avoid re-use and to allow clean fetch tomorrow only
     user.dailyQuestionIds = [];
-    user.dailyQuestionsDate = new Date();
+    // Keep dailyQuestionsDate as the date of allocation; optionally could clear, but leave for reference
         await user.save();
 
         return res.status(200).json({

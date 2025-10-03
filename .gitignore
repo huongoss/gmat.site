@@ -23,6 +23,7 @@ pnpm-debug.log*
 client/.env
 server/.env
 infra/.env
+infra/env.yaml
 
 # Certificates and keys
 *.pem
