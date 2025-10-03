@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { sendMail } from '../services/email';
 import { SALES_EMAIL } from '../config/env';
+import SupportRequest from '../models/SupportRequest';
+import crypto from 'crypto';
 
 export const submitSupportRequest = async (req: Request, res: Response) => {
   try {
@@ -29,12 +31,25 @@ export const submitSupportRequest = async (req: Request, res: Response) => {
     }
     const safeName = rawName.slice(0, 100);
 
-    // Notify internal sales/support
+    // Generate a short reference id (base36 first 8 chars of random bytes)
+    const referenceId = crypto.randomBytes(6).toString('base64url').slice(0, 8);
+
+    // Persist to database
+    const doc = await SupportRequest.create({
+      name: safeName,
+      email: emailStr,
+      message: trimmed,
+      status: 'new',
+      referenceId
+    });
+
+    // Notify internal sales/support (include reference id)
     const adminSubject = `Support Request from ${safeName}`;
     const adminHtml = `
       <h2>New Support / Contact Request</h2>
       <p><strong>Name:</strong> ${safeName}</p>
       <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Reference ID:</strong> ${referenceId}</p>
       <p><strong>Message:</strong></p>
       <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(trimmed)}</pre>
     `;
@@ -50,7 +65,7 @@ export const submitSupportRequest = async (req: Request, res: Response) => {
     `;
   await sendMail(email, userSubject, userHtml);
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, referenceId });
   } catch (err) {
     console.error('Support request error', err);
     return res.status(500).json({ error: 'Unable to submit request right now.' });
