@@ -15,6 +15,7 @@ import Test from './pages/Test';
 import DailyPractice from './pages/DailyPractice';
 import Review from './pages/Review';
 import Account from './pages/Account';
+import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 import { RequireAuth, GuestOnly } from './router/guards';
 import Navbar from './components/Navbar';
@@ -54,6 +55,7 @@ const App: React.FC = () => {
                     <Route path="/daily" element={<RequireAuth><DailyPractice /></RequireAuth>} />
                     <Route path="/review" element={<RequireAuth><Review /></RequireAuth>} />
                     <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
+                    <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Footer />

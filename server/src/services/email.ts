@@ -139,3 +139,40 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 
   await sendMail(email, subject, html);
 };
+
+// Generic branded email wrapper (re-uses styling similar to verification emails)
+export const buildBrandedEmail = (options: {
+  title?: string; // Title shown in header bar
+  heading?: string; // H2 heading inside content area
+  bodyHtml: string; // Already-safe HTML markup for body
+}): string => {
+  const { title = `Message from ${BRAND_NAME} Team`, heading, bodyHtml } = options;
+  return `<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset=\"utf-8\" />
+      <title>${title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.55; color: #333; margin:0; padding:0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4CAF50; color: #fff; text-align: center; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
+        h1,h2,h3 { margin-top: 0; font-weight: 600; }
+        .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #666; }
+        a.button { display:inline-block; background:#4CAF50; color:#fff !important; text-decoration:none; padding:12px 22px; border-radius:4px; }
+        code,pre { font-family: monospace; background:#eee; padding:2px 4px; border-radius:3px; }
+      </style>
+    </head>
+    <body>
+      <div class=\"container\">
+        <div class=\"header\"><h1>${title}</h1></div>
+        <div class=\"content\">
+          ${heading ? `<h2>${heading}</h2>` : ''}
+          ${bodyHtml}
+          <p style=\"margin-top:32px; font-size:13px; color:#555\">— ${BRAND_NAME} Team<br/>This message was sent by an authorized team member.</p>
+        </div>
+        <div class=\"footer\">© ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.</div>
+      </div>
+    </body>
+  </html>`;
+};

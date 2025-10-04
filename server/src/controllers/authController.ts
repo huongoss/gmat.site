@@ -69,7 +69,8 @@ const register = async (req: Request, res: Response) => {
             email: newUser.email, 
             username: newUser.username, 
             subscriptionActive: newUser.subscriptionActive,
-            emailVerified: newUser.emailVerified
+            emailVerified: newUser.emailVerified,
+            admin: newUser.admin
         };
         res.status(201).json({ 
             message: 'User registered successfully! Please check your email to verify your account.', 
@@ -131,7 +132,8 @@ const login = async (req: Request, res: Response) => {
             subscriptionActive: user.subscriptionActive, 
             stripeCustomerId: user.stripeCustomerId, 
             subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
-            emailVerified: user.emailVerified
+            emailVerified: user.emailVerified,
+            admin: user.admin
         };
         res.status(200).json({ token, user: payload });
     } catch (error: any) {
@@ -275,7 +277,8 @@ const getUserProfile = async (req: Request, res: Response) => {
             subscriptionActive: user.subscriptionActive, 
             stripeCustomerId: user.stripeCustomerId, 
             subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
-            emailVerified: user.emailVerified
+            emailVerified: user.emailVerified,
+            admin: (user as any).admin
         };
         res.status(200).json(payload);
     } catch (error) {

@@ -4,7 +4,7 @@ import './Navbar.css';
 import useAuth from '../hooks/useAuth';
 
 const Navbar: React.FC = () => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth() as any;
     return (
         <nav className="navbar">
             <div className="container">
@@ -29,6 +29,11 @@ const Navbar: React.FC = () => {
                             <li>
                                 <NavLink to="/account" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Account</NavLink>
                             </li>
+                            {user?.admin && (
+                                <li>
+                                    <NavLink to="/admin" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Admin</NavLink>
+                                </li>
+                            )}
                         </>
                     ) : (
                         <>

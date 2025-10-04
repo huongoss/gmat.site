@@ -5,6 +5,7 @@ interface IUser extends Document {
     email: string;
     password: string;
     emailVerified: boolean;
+    admin?: boolean; // simple admin flag (optional, default false)
     emailVerificationToken?: string;
     emailVerificationExpires?: Date;
     subscriptionActive: boolean;
@@ -54,6 +55,7 @@ const UserSchema: Schema = new Schema({
     dailyCarryOver: { type: Number, default: 0 },
     dailyConsumedToday: { type: Number, default: 0 },
     dailyLastSubmitDate: { type: Date },
+    admin: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>('User', UserSchema);

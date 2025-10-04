@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import testRoutes from './routes/tests';
 import resultRoutes from './routes/results';
 import supportRoutes from './routes/support';
+import adminRoutes from './routes/admin';
 import paymentRoutes from './routes/payments';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -69,6 +70,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/payments', (req, _res, next) => { console.log('[payments-route] hit', req.method, req.originalUrl); next(); }, paymentRoutes);
 
 // Dev helper: endpoint to receive client console log forwarding

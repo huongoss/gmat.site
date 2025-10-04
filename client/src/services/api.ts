@@ -126,6 +126,12 @@ export const verifyEmail = async (token: string) => {
     return res.data;
 };
 
+// Admin endpoints
+export const adminSendEmail = async (payload: { to?: string; subject: string; html?: string; text?: string }) => {
+    const res = await api.post('/admin/email', payload);
+    return res.data;
+};
+
 // Daily practice endpoints
 export const getDailyQuestions = async () => {
     const res = await api.get('/tests/daily');
