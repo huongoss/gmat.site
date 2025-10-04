@@ -12,6 +12,7 @@ substitutions:
   _REPOSITORY: web
   _IMAGE: gmat-practice-app
   _VITE_GA_MEASUREMENT_ID: "G-EK1FT9KC5M"
+  _VITE_RECAPTCHA_SITE_KEY: "6LeQq90rAAAAACJW5KalsPKqvzJMtCKcNIJHIlYm"
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -23,7 +24,8 @@ steps:
       [
         'build',
         '-f','infra/Dockerfile',
-        '--build-arg','VITE_GA_MEASUREMENT_ID=${_VITE_GA_MEASUREMENT_ID}',
+  '--build-arg','VITE_GA_MEASUREMENT_ID=${_VITE_GA_MEASUREMENT_ID}',
+  '--build-arg','VITE_RECAPTCHA_SITE_KEY=${_VITE_RECAPTCHA_SITE_KEY}',
         '-t','${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:latest',
         '.',
       ]

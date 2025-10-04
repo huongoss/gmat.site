@@ -93,6 +93,90 @@ SENDGRID_FROM_EMAIL: "no-reply@gmat.site"
 
 Recommended: move sensitive values to **Google Secret Manager** and inject at deploy time.
 
+### reCAPTCHA Integration
+
+Client (public) site key is embedded at build time via Cloud Build substitution / Docker build arg `VITE_RECAPTCHA_SITE_KEY`. The server **never** needs the secret key in the bundle—only at runtime.
+
+Required keys:
+
+```
+# Public (safe for client bundle)
+VITE_RECAPTCHA_SITE_KEY=6xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Server-only secret (DO NOT expose to client, do not add VITE_ prefix)
+RECAPTCHA_SECRET_KEY=6xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+RECAPTCHA_SITE_KEY=6xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # (optional mirror of public key for server validation/logging)
+```
+
+Client lookup order (see `client/src/utils/recaptcha.ts`):
+1. `import.meta.env.VITE_RECAPTCHA_SITE_KEY`
+2. `import.meta.env.RECAPTCHA_SITE_KEY` (fallback)
+3. `window.__RECAPTCHA_SITE_KEY__` (runtime injection fallback if you ever add it)
+
+Server middleware (`server/src/middleware/recaptcha.ts`) requires both `RECAPTCHA_SECRET_KEY` and `RECAPTCHA_SITE_KEY` in production; in non‑prod it auto‑bypasses if missing.
+
+### Updating / Rotating reCAPTCHA Keys
+1. Generate new keys in Google reCAPTCHA admin.
+2. Update local `client/.env` (site key) and `server/.env` (site + secret).
+3. Re-publish secret blob (see below) OR update discrete secrets.
+4. Update Cloud Build substitution `_VITE_RECAPTCHA_SITE_KEY` (in `infra/cloudbuild.yaml`) **or** override at build time:
+   ```bash
+   gcloud builds submit --config infra/cloudbuild.yaml \
+     --substitutions _VITE_RECAPTCHA_SITE_KEY=6NEWKEYxxxxxxxx
+   ```
+5. Deploy Cloud Run (new image + new secret version). Old secret key becomes invalid after revocation.
+
+### Single Secret Strategy – Updating (app-env-blob)
+
+All runtime env (including Stripe, SendGrid, JWT, reCAPTCHA secret) live in one newline‑delimited secret. To update:
+
+```
+# 1. Edit server/.env (local) with new/changed values.
+# 2. Publish new version:
+./scripts/publish-app-env-blob.sh
+# 3. Redeploy Cloud Run (image rebuild optional if only runtime secrets changed):
+gcloud run deploy gmat-practice-app \
+  --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
+  --region us-central1 \
+  --platform managed \
+  --set-secrets=APP_ENV_BLOB=app-env-blob:latest \
+  --port 8080
+```
+
+You can rotate only the secret values (no code changes) if the existing container already knows how to parse `APP_ENV_BLOB`.
+
+Validation tip after deploy:
+```
+gcloud run services describe gmat-practice-app --region us-central1 \
+  --format='get(status.traffic[0].revisionName)'
+# Then check logs for recaptcha or stripe usage.
+```
+
+### Overriding CLIENT_URL Temporarily
+If you need a one-off override without editing the secret blob:
+```
+gcloud run deploy gmat-practice-app \
+  --image us-central1-docker.pkg.dev/gmat-472115/web/gmat-practice-app:latest \
+  --region us-central1 \
+  --platform managed \
+  --set-secrets=APP_ENV_BLOB=app-env-blob:latest \
+  --set-env-vars=CLIENT_URL=https://staging.gmat.site
+```
+On the next full rotation, either bake it into the blob or remove the override.
+
+### Support Request Reference IDs
+Support/contact submissions return a `referenceId` (stored in `SupportRequest` collection). Usage:
+
+- Returned to user as confirmation code.
+- Include it in follow‑up emails or internal ticketing.
+- Allows staff to quickly locate the record by `referenceId` without exposing user PII.
+
+To query manually (Mongo shell / driver):
+```js
+db.supportrequests.find({ referenceId: "SR-2025-10-0001" })
+```
+Reference ID format is stable but intentionally simple; if you need collision resistance under very high volume you can augment with a short hash suffix.
+
 ## Seeding Demo Questions
 
 Seeds the 10 trial/demo questions into MongoDB.
@@ -210,6 +294,7 @@ gcloud run deploy gmat-practice-app \
 
 - Rotate any committed secrets immediately (e.g. Stripe, SendGrid values previously shown).
 - Use Secret Manager + `--set-secrets` for sensitive keys.
+- reCAPTCHA secret key must never be prefixed with `VITE_` or committed.
 - Prefer principle of least privilege for MongoDB user.
 - Set `JWT_SECRET` to a long random string (>= 32 chars).
 - Enable Cloud Logging & Error Reporting for observability.

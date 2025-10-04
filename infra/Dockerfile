@@ -2,9 +2,11 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Accept build argument for Google Analytics
+# Accept build arguments for analytics and reCAPTCHA site key (public)
 ARG VITE_GA_MEASUREMENT_ID
+ARG VITE_RECAPTCHA_SITE_KEY
 ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+ENV VITE_RECAPTCHA_SITE_KEY=$VITE_RECAPTCHA_SITE_KEY
 
 # Install dependencies for server and client
 COPY server/package*.json server/
