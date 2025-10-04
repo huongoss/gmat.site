@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin';
 import paymentRoutes from './routes/payments';
 import cors from 'cors';
 import crypto from 'crypto';
+import compression from 'compression';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8080;
@@ -30,6 +31,20 @@ if (process.env.DEBUG_CONFIG === '1') {
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Enable gzip/Brotli compression (improves HTML transfer size for SEO performance signals)
+app.use(compression());
+
+// Optional canonical redirect: enforce non-www (can toggle via CANONICAL_ENFORCE=1)
+app.use((req, res, next) => {
+  if (process.env.CANONICAL_ENFORCE === '1') {
+    const host = req.headers.host || '';
+    if (/^www\./i.test(host)) {
+      const target = `${req.protocol}://${host.replace(/^www\./i,'')}${req.originalUrl}`;
+      return res.redirect(301, target);
+    }
+  }
+  next();
+});
 
 // Basic request logger (dev aid)
 app.use((req, res, next) => {
