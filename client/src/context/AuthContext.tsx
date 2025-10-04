@@ -100,8 +100,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const register = async (email: string, password: string, username?: string, recaptchaToken?: string) => {
-        await registerUser({ email, password, username, recaptchaToken });
-        await login(email, password, recaptchaToken);
+        // Call register endpoint (returns 201 Created with token + user)
+        const reg = await registerUser({ email, password, username, recaptchaToken });
+        // Some earlier versions ignored the returned token and performed an immediate login.
+        // That caused an apparent "failure" after a 201 success when the reused reCAPTCHA token
+        // was rejected on the /auth/login endpoint. We now trust the 201 response.
+        if (reg?.token) {
+            const newToken = reg.token as string;
+            setToken(newToken);
+            localStorage.setItem('token', newToken);
+            setAuthToken(newToken);
+            // Use returned user payload if present (may have minimal fields like emailVerified false)
+            if (reg.user) {
+                setUser(reg.user);
+                localStorage.setItem('user', JSON.stringify(reg.user));
+                const uid = (reg.user as any)?.id || (reg.user as any)?._id;
+                if (uid) setUserId(String(uid));
+            } else {
+                // Fallback fetch profile (should succeed even if email not verified)
+                await refreshProfile(newToken);
+            }
+            setIsAuthenticated(true);
+        } else {
+            // Fallback: if backend ever omits token, perform a normal login (request fresh reCAPTCHA if needed externally)
+            await login(email, password, undefined);
+        }
         trackEvent('sign_up', { method: 'password' });
     };
 
