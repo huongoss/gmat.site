@@ -81,6 +81,13 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                message: 'Email verification required before accessing daily practice.',
+                canPractice: false,
+                emailVerified: false
+            });
+        }
         const isPro = !!user.subscriptionActive;
         const maxDaily = isPro ? 10 : 2;
         const bankSize = isPro ? 1000 : 100;
@@ -249,6 +256,9 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
+        if (!user.emailVerified) {
+            return res.status(403).json({ message: 'Email verification required before submitting daily practice.' });
+        }
         const questionIds = Object.keys(answers);
         const questionsPerDay = user.subscriptionActive ? 10 : 2;
 
@@ -347,6 +357,20 @@ export const getUserProgress = async (req: Request, res: Response) => {
         }).sort({ dateTaken: -1 }).limit(10);
 
         const isPro = !!user.subscriptionActive;
+        const emailVerified = !!user.emailVerified;
+        if (!emailVerified) {
+            return res.status(200).json({
+                progress: {
+                    current: user.currentQuestionIndex || 0,
+                    total: isPro ? 1000 : 100,
+                    percentage: Math.round(((user.currentQuestionIndex || 0) / (isPro ? 1000 : 100)) * 100)
+                },
+                canPracticeToday: false,
+                emailVerified: false,
+                reason: 'Email not verified',
+                plan: isPro ? 'pro' : 'free'
+            });
+        }
         const totalQuestions = isPro ? 1000 : 100;
         const currentProgress = user.currentQuestionIndex || 0;
 
@@ -370,5 +394,98 @@ export const getUserProgress = async (req: Request, res: Response) => {
 
     } catch (error) {
         res.status(500).json({ message: 'Error fetching user progress', error });
+    }
+};
+
+// Fetch today's completed daily question set for retake (2 or 10) without changing allocation.
+export const getRetakeDailyQuestions = async (req: Request, res: Response) => {
+    try {
+        const userId = (req.user as any)?.id as string | undefined;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user.emailVerified) return res.status(403).json({ message: 'Email verification required.' });
+
+        // Find today's original daily result (not a retake)
+        const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+        const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+        const original = await Result.findOne({ userId, type: 'daily', dateTaken: { $gte: startOfDay, $lte: endOfDay } }).lean();
+        if (!original) {
+            return res.status(404).json({ message: 'No completed daily practice found for today to retake.' });
+        }
+
+        const questions = await Question.find({ _id: { $in: original.questionIds } }, { questionText: 1, options: 1, correctAnswer: 1 }).lean();
+        const payload = questions.map((q: any, idx: number) => ({
+            id: String(q._id),
+            question: q.questionText,
+            options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
+            sequenceNumber: idx + 1
+        }));
+        return res.status(200).json({
+            questions: payload,
+            baseResultId: String((original as any)._id),
+            originalScore: original.score,
+            count: payload.length
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching retake daily questions', error });
+    }
+};
+
+// Submit retake answers (does not affect daily quotas or user progress)
+export const submitRetakeDailyAnswers = async (req: Request, res: Response) => {
+    try {
+        const userId = (req.user as any)?.id as string | undefined;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+        const { answers, baseResultId } = req.body as { answers: Record<string,string>; baseResultId: string };
+        if (!answers || typeof answers !== 'object' || !baseResultId) {
+            return res.status(400).json({ message: 'Invalid payload' });
+        }
+        const base = await Result.findOne({ _id: baseResultId, userId, type: 'daily' }).lean();
+        if (!base) return res.status(404).json({ message: 'Base daily result not found' });
+
+        const questionIds = Object.keys(answers);
+        // Ensure only original question IDs are answered
+        for (const qid of questionIds) {
+            if (!base.questionIds.includes(qid)) {
+                return res.status(400).json({ message: 'Answer includes question not in original set' });
+            }
+        }
+        const questions = await Question.find({ _id: { $in: questionIds } }).lean();
+        if (questions.length !== questionIds.length) {
+            return res.status(400).json({ message: 'Some questions not found' });
+        }
+        let correctAnswers = 0;
+        const feedback: Array<{ questionId: string; correct: boolean; correctAnswer: string; userAnswer: string }> = [];
+        questions.forEach((q: any) => {
+            const qid = String(q._id);
+            const userAnswer = answers[qid];
+            const isCorrect = userAnswer === q.correctAnswer;
+            if (isCorrect) correctAnswers++;
+            feedback.push({ questionId: qid, correct: isCorrect, correctAnswer: q.correctAnswer, userAnswer });
+        });
+        const score = Math.round((correctAnswers / questions.length) * 100);
+        const result = new Result({
+            userId,
+            score,
+            questionsAnswered: questions.length,
+            correctAnswers,
+            type: 'daily-retake',
+            questionIds: base.questionIds,
+            userAnswers: answers,
+            baseResultId
+        });
+        await result.save();
+        return res.status(200).json({
+            message: 'Retake submitted',
+            score,
+            correctAnswers,
+            totalQuestions: questions.length,
+            feedback,
+            baseResultId,
+            originalScore: base.score
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error submitting retake answers', error });
     }
 };

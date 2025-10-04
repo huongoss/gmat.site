@@ -198,6 +198,37 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
 /* Auth layout */
 .auth-card { max-width: 480px; margin: var(--space-6) auto; }
 
+/* HumanCheck visible indicator */
+.human-check { display: flex; align-items: center; gap: var(--space-2); font-size: .85rem; margin-top: var(--space-3); color: var(--color-text-subtle); }
+/* Calendar (Review) */
+.calendar { padding: var(--space-4); }
+.cal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3); font-weight:600; }
+.cal-legend { display:flex; align-items:center; gap:10px; font-size:.65rem; text-transform:uppercase; letter-spacing:.5px; }
+.cal-dot { width:10px; height:10px; border-radius:50%; display:inline-block; background:var(--color-border); position:relative; top:1px; }
+.cal-dot.daily { background: var(--color-primary); }
+.cal-dot.retake { background: var(--color-accent); }
+.cal-weekdays { display:grid; grid-template-columns: repeat(7, 1fr); gap:4px; font-size:.65rem; text-align:center; font-weight:600; color:var(--color-text-subtle); margin-bottom:4px; }
+.cal-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:4px; }
+.cal-cell { position:relative; aspect-ratio: 1 / 1; background: var(--color-surface); border:1px solid var(--color-border); border-radius: var(--radius-sm); padding:4px; display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; cursor:pointer; font-size:.7rem; transition: background .15s, border-color .15s; }
+.cal-cell:hover { background: var(--color-surface-alt); }
+.cal-cell.today { border-color: var(--color-primary); }
+.cal-cell.selected { outline:2px solid var(--color-primary); outline-offset:2px; }
+.cal-cell.empty { background: transparent; border:none; pointer-events:none; }
+.cal-day-num { font-weight:600; font-size:.7rem; }
+.cal-markers { margin-top:auto; display:flex; gap:4px; }
+@media (max-width:600px) {
+  .calendar { padding: var(--space-3); }
+  .cal-cell { font-size:.65rem; }
+  .cal-legend { display:none; }
+}
+.human-check .hc-indicator { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; font-size: .75rem; font-weight: 600; background: var(--color-surface-alt); border: 1px solid var(--color-border); }
+.human-check .hc-indicator.checking { animation: hcPulse 1s infinite ease-in-out; }
+.human-check .hc-indicator.ok { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.human-check .hc-indicator.error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.human-check .hc-text { line-height: 1; }
+.human-check .hc-legal { margin-left: calc(18px + var(--space-2)); margin-top: var(--space-2); }
+@keyframes hcPulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+
 /* Layout width constraints for large screens */
 .content-narrow { width: 100%; max-width: 760px; margin: 0 auto; }
 .content-medium { width: 100%; max-width: 900px; margin: 0 auto; }

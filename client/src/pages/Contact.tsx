@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { postSupportContact } from '../services/api';
+import { getRecaptchaToken } from '../utils/recaptcha';
 import '../pages/Home.css'; // reuse some base spacing & typography classes
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,7 +23,9 @@ export default function Contact() {
     setSubmitting(true);
     setError(null);
     try {
-      await postSupportContact({ name: name.trim(), email: email.trim(), message: message.trim() });
+      let recaptchaToken: string | undefined;
+      try { recaptchaToken = await getRecaptchaToken('contact'); } catch (e) { /* fail soft in dev */ }
+      await postSupportContact({ name: name.trim(), email: email.trim(), message: message.trim(), recaptchaToken });
       setSuccess(true);
       setName('');
       setEmail('');

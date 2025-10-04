@@ -5,9 +5,9 @@ import { loginUser, registerUser, getProfile, setAuthToken } from '../services/a
 interface AuthContextType {
     user: any;
     token?: string;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, recaptchaToken?: string) => Promise<void>;
     logout: () => void;
-    register: (email: string, password: string, username?: string) => Promise<void>;
+    register: (email: string, password: string, username?: string, recaptchaToken?: string) => Promise<void>;
     isAuthenticated: boolean;
     refreshProfile: () => Promise<void>;
     authLoading: boolean;
@@ -25,10 +25,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (async () => {
             const storedToken = localStorage.getItem('token');
             if (storedToken) {
+                // Set token header immediately
                 setToken(storedToken);
                 setAuthToken(storedToken);
-                setIsAuthenticated(true);
-                await refreshProfile();
+                try {
+                    const profile = await getProfile();
+                    setUser(profile);
+                    localStorage.setItem('user', JSON.stringify(profile));
+                    const uid = profile?.id || profile?._id;
+                    if (uid) setUserId(String(uid));
+                    setIsAuthenticated(true);
+                } catch (e: any) {
+                    console.warn('Auto profile load failed; clearing auth', e);
+                    clearAuth();
+                } finally {
+                    setAuthLoading(false);
+                }
             } else {
                 const storedUser = localStorage.getItem('user');
                 if (storedUser) {
@@ -38,20 +50,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const uid = parsed?.id || parsed?._id;
                     if (uid) setUserId(String(uid));
                 }
+                setAuthLoading(false);
             }
-            setAuthLoading(false);
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const refreshProfile = async () => {
-        if (!token) return;
+    const refreshProfile = async (overrideToken?: string) => {
+        const activeToken = overrideToken || token || localStorage.getItem('token');
+        if (!activeToken) return;
+        setAuthToken(activeToken);
         try {
             const profile = await getProfile();
             setUser(profile);
             localStorage.setItem('user', JSON.stringify(profile));
             const uid = profile?.id || profile?._id;
             if (uid) setUserId(String(uid));
+            if (!isAuthenticated) setIsAuthenticated(true);
         } catch (e: any) {
             if (e?.response?.status === 401 || e?.response?.status === 403) {
                 clearAuth();
@@ -70,13 +85,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserId(undefined);
     };
 
-    const login = async (email: string, password: string) => {
-        const { token } = await loginUser({ email, password });
+    const login = async (email: string, password: string, recaptchaToken?: string) => {
+        const { token } = await loginUser({ email, password, recaptchaToken });
         setToken(token);
         localStorage.setItem('token', token);
         setAuthToken(token);
-        setIsAuthenticated(true);
-        await refreshProfile();
+        setIsAuthenticated(true); // optimistic
+        await refreshProfile(token);
         trackEvent('login', { method: 'password' });
     };
 
@@ -84,9 +99,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearAuth();
     };
 
-    const register = async (email: string, password: string, username?: string) => {
-        await registerUser({ email, password, username });
-        await login(email, password);
+    const register = async (email: string, password: string, username?: string, recaptchaToken?: string) => {
+        await registerUser({ email, password, username, recaptchaToken });
+        await login(email, password, recaptchaToken);
         trackEvent('sign_up', { method: 'password' });
     };
 

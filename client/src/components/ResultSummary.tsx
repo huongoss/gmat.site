@@ -5,9 +5,13 @@ interface ResultSummaryProps {
     totalQuestions: number;
     onRetake: () => void;
     onReview: () => void;
+    title?: string;
+    subtitle?: string;
+    badges?: string[];
+    disableRetake?: boolean;
 }
 
-const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, onRetake, onReview }) => {
+const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, onRetake, onReview, title = 'Test Results', subtitle, badges = [], disableRetake }) => {
     const percentage = (score / totalQuestions) * 100;
 
     const getFeedbackMessage = () => {
@@ -18,14 +22,25 @@ const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, on
 
     return (
         <div className="result-summary card">
-            <h2 className="mb-2">Test Results</h2>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+                <div>
+                    <h2 className="mb-2" style={{ marginTop: 0 }}>{title}</h2>
+                    {subtitle && <p className="mb-2" style={{ fontSize:'.85rem', color:'var(--color-text-subtle)' }}>{subtitle}</p>}
+                </div>
+                {badges.length > 0 && (
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                        {badges.map((b,i)=>(<span key={i} style={{ background:'var(--color-surface-alt)', border:'1px solid var(--color-border)', borderRadius:16, padding:'2px 10px', fontSize:'.7rem', fontWeight:600, letterSpacing:.5 }}>{b}</span>))}
+                    </div>
+                )}
+            </div>
             <p className="mb-2">You answered {score} out of {totalQuestions} questions correctly.</p>
-            <p className="mb-4"><strong>Your score:</strong> {percentage.toFixed(2)}%</p>
+            <div className="progress mb-3" aria-label="Score percentage"><div className="progress-bar" style={{ width: `${percentage}%` }} /></div>
+            <p className="mb-4"><strong>Score:</strong> {percentage.toFixed(1)}%</p>
             <div className="feedback mb-4">
                 <p>{getFeedbackMessage()}</p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
-                <button className="btn" onClick={onRetake}>Retake Test</button>
+                <button className="btn" onClick={onRetake} disabled={disableRetake}>Retake Test</button>
                 <button className="btn-outline" onClick={onReview}>Review Answers</button>
             </div>
         </div>

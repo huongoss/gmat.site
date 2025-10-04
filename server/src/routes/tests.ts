@@ -1,5 +1,5 @@
 import express from 'express';
-import { getQuestions, submitAnswers, getDailyQuestions, submitDailyAnswers, getUserProgress } from '../controllers/testController';
+import { getQuestions, submitAnswers, getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../controllers/testController';
 import requireAuth from '../middleware/requireAuth';
 
 const router = express.Router();
@@ -14,5 +14,7 @@ router.post('/submit', requireAuth, submitAnswers);
 router.get('/daily', requireAuth, getDailyQuestions);
 router.post('/daily/submit', requireAuth, submitDailyAnswers);
 router.get('/daily/progress', requireAuth, getUserProgress);
+router.get('/daily/retake', requireAuth, getRetakeDailyQuestions);
+router.post('/daily/retake/submit', requireAuth, submitRetakeDailyAnswers);
 
 export default router;

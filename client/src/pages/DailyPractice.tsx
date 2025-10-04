@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { getDailyQuestions, submitDailyAnswers, getUserProgress } from '../services/api';
+import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../services/api';
+import { useLocation } from 'react-router-dom';
 
 const DailyPractice: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,10 @@ const DailyPractice: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null); // error specifically for submit
   const [autoProgressLoaded, setAutoProgressLoaded] = useState(false);
 
+  const isRetakeMode = new URLSearchParams(location.search).get('retake') === '1';
+  const [isRetake, setIsRetake] = useState(isRetakeMode);
+  const [baseResultId, setBaseResultId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -28,13 +34,25 @@ const DailyPractice: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const data = await getDailyQuestions();
-        setPlan(data.plan);
-        setQuestions(data.questions);
-        setProgress({ current: data.progress, total: data.totalQuestions, percentage: Math.round((data.progress / data.totalQuestions) * 100) });
-        setCanPractice(data.canPractice);
-        if (!data.canPractice && data.message) {
-          setError(data.message);
+        if (isRetakeMode) {
+          const data = await getRetakeDailyQuestions();
+          setIsRetake(true);
+          setBaseResultId(data.baseResultId);
+          setQuestions(data.questions.map((q: any, idx: number) => ({ ...q, sequenceNumber: idx + 1 })));
+          // Derive plan directly from user to avoid showing Free for subscribed users
+          const derivedPlan = user?.subscriptionActive ? 'pro' : 'free';
+          setPlan(derivedPlan as any);
+          setProgress(null);
+          setCanPractice(true);
+        } else {
+          const data = await getDailyQuestions();
+          setPlan(data.plan);
+          setQuestions(data.questions);
+          setProgress({ current: data.progress, total: data.totalQuestions, percentage: Math.round((data.progress / data.totalQuestions) * 100) });
+          setCanPractice(data.canPractice);
+          if (!data.canPractice && data.message) {
+            setError(data.message);
+          }
         }
       } catch (e: any) {
         setError(e?.response?.data?.message || e?.message || 'Failed to load daily questions');
@@ -42,7 +60,7 @@ const DailyPractice: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, location.search, isRetakeMode, user?.subscriptionActive]);
 
   // Optionally refresh progress in background (non-blocking) once
   useEffect(() => {
@@ -84,8 +102,13 @@ const DailyPractice: React.FC = () => {
     try {
       setSubmitError(null);
       setSubmitting(true);
-      const submitResult = await submitDailyAnswers(answers);
-      setResult(submitResult);
+      if (isRetake && baseResultId) {
+        const submitResult = await submitRetakeDailyAnswers(baseResultId, answers);
+        setResult({ ...submitResult, retake: true });
+      } else {
+        const submitResult = await submitDailyAnswers(answers);
+        setResult(submitResult);
+      }
       setSubmitted(true);
     } catch (e: any) {
       setSubmitError(e?.response?.data?.message || e?.message || 'Submit failed');
@@ -113,10 +136,10 @@ const DailyPractice: React.FC = () => {
   if (submitted && result) {
     return (
       <div className="card content-narrow">
-        <h1 className="page-title">Daily practice</h1>
+        <h1 className="page-title">{isRetake ? 'Retake – Daily Set' : 'Daily practice'}</h1>
         <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>
-        <p className="alert alert-success">Completed! Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%)</p>
-        <p className="muted">Progress: {result.progress}/{result.totalInBank}</p>
+        <p className="alert alert-success">{isRetake ? 'Retake completed' : 'Completed!'} Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%) {result.originalScore !== undefined && !isRetake && `(Original: ${result.originalScore}%)`}</p>
+        {!isRetake && result.progress !== undefined && (<p className="muted">Progress: {result.progress}/{result.totalInBank}</p>)}
         {result.feedback && (
           <div className="mt-3">
             <h3>Results:</h3>
@@ -138,10 +161,10 @@ const DailyPractice: React.FC = () => {
   return (
   <div className="card content-narrow">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h1 className="page-title">Daily practice</h1>
+        <h1 className="page-title">{isRetake ? 'Retake – Daily Set' : 'Daily practice'}</h1>
         <span className="badge">{plan === 'pro' ? 'Monthly' : 'Free'}</span>
       </div>
-      <p className="muted">You have {total} question(s) today.</p>
+      <p className="muted">{isRetake ? 'Repeat the same questions to improve your score.' : `You have ${total} question(s) today.`}</p>
       {progress && (
         <p className="muted">Progress: {progress.current}/{progress.total} ({progress.percentage}%)</p>
       )}
@@ -179,7 +202,8 @@ const DailyPractice: React.FC = () => {
         <button className="btn" disabled={numAnswered < total || submitting} onClick={onSubmit}>
           {submitting ? 'Submitting…' : numAnswered < total ? `Answer all (${numAnswered}/${total})` : 'Submit'}
         </button>
-        {plan !== 'pro' && (
+        {/* Hide upgrade button during retake; only show on original daily mode */}
+        {!isRetake && plan !== 'pro' && (
           <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')} disabled={submitting}>
             Upgrade for 10/day questions
           </button>

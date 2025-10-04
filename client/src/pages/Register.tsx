@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import { getRecaptchaToken } from '../utils/recaptcha';
+import HumanCheck from '../components/HumanCheck';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +20,9 @@ const Register: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      await register(email, password, username || undefined);
+      let recaptchaToken: string | undefined;
+      try { recaptchaToken = await getRecaptchaToken('register'); } catch (e) { /* ignore token errors in dev */ }
+  await register(email, password, username || undefined, recaptchaToken);
       setSuccess('Account created successfully! Please check your email to verify your account before logging in.');
       // Don't navigate immediately, let user see the verification message
       setTimeout(() => {
@@ -30,6 +34,7 @@ const Register: React.FC = () => {
       setLoading(false);
     }
   };
+// import already at top
 
   return (
     <div className="card auth-card">
@@ -55,6 +60,7 @@ const Register: React.FC = () => {
             <label htmlFor="username">Username (optional)</label>
             <input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
+          <HumanCheck action="register" showLegal={true} />
           <div className="form-actions">
             <button className="btn btn-block" type="submit" disabled={loading}>{loading ? 'Creating…' : 'Create account'}</button>
           </div>

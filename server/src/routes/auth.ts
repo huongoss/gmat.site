@@ -10,14 +10,15 @@ import {
 } from '../controllers/authController';
 import { getPublicKeyPem, getKeyFingerprint } from '../security/keys';
 import requireAuth from '../middleware/requireAuth';
+import recaptchaVerify from '../middleware/recaptcha';
 
 const router = express.Router();
 
 // Route for user registration
-router.post('/register', register);
+router.post('/register', recaptchaVerify, register);
 
 // Route for user login
-router.post('/login', login);
+router.post('/login', recaptchaVerify, login);
 
 // Public key for client-side password encryption
 router.get('/public-key', (_req, res) => {

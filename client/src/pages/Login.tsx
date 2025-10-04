@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import { getRecaptchaToken } from '../utils/recaptcha';
+import HumanCheck from '../components/HumanCheck';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +17,9 @@ const Login: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email, password);
+      let recaptchaToken: string | undefined;
+      try { recaptchaToken = await getRecaptchaToken('login'); } catch (e) { /* ignore dev */ }
+      await login(email, password, recaptchaToken);
       navigate('/account');
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Login failed');
@@ -37,6 +41,7 @@ const Login: React.FC = () => {
           <label htmlFor="password">Password</label>
           <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
+        <HumanCheck action="login" showLegal={false} />
         <div className="form-actions">
           <button className="btn btn-block" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Login'}</button>
         </div>

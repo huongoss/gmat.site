@@ -37,15 +37,17 @@ export const getProfile = async () => {
     return res.data;
 };
 
-export const registerUser = async (userData: { email: string; password: string; username?: string }) => {
+export const registerUser = async (userData: { email: string; password: string; username?: string; recaptchaToken?: string }) => {
     const passwordEnc = await encryptPassword(userData.password);
-    const response = await api.post('/auth/register', { email: userData.email, username: userData.username, passwordEnc });
+    const headers = userData.recaptchaToken ? { 'x-recaptcha-token': userData.recaptchaToken } : undefined;
+    const response = await api.post('/auth/register', { email: userData.email, username: userData.username, passwordEnc }, { headers });
     return response.data;
 };
 
-export const loginUser = async (credentials: { email: string; password: string }) => {
+export const loginUser = async (credentials: { email: string; password: string; recaptchaToken?: string }) => {
     const passwordEnc = await encryptPassword(credentials.password);
-    const response = await api.post('/auth/login', { email: credentials.email, passwordEnc });
+    const headers = credentials.recaptchaToken ? { 'x-recaptcha-token': credentials.recaptchaToken } : undefined;
+    const response = await api.post('/auth/login', { email: credentials.email, passwordEnc }, { headers });
     return response.data;
 };
 
@@ -101,8 +103,9 @@ export const resendVerificationEmail = async (email: string) => {
 };
 
 // Support contact submission
-export const postSupportContact = async (payload: { name: string; email: string; message: string }) => {
-    const res = await api.post('/support/contact', payload);
+export const postSupportContact = async (payload: { name: string; email: string; message: string; recaptchaToken?: string }) => {
+    const headers = payload.recaptchaToken ? { 'x-recaptcha-token': payload.recaptchaToken } : undefined;
+    const res = await api.post('/support/contact', payload, { headers });
     return res.data;
 };
 
@@ -136,6 +139,17 @@ export const submitDailyAnswers = async (answers: Record<string, string>) => {
 
 export const getUserProgress = async () => {
     const res = await api.get('/tests/daily/progress');
+    return res.data;
+};
+
+// Daily retake endpoints
+export const getRetakeDailyQuestions = async () => {
+    const res = await api.get('/tests/daily/retake');
+    return res.data;
+};
+
+export const submitRetakeDailyAnswers = async (baseResultId: string, answers: Record<string,string>) => {
+    const res = await api.post('/tests/daily/retake/submit', { baseResultId, answers });
     return res.data;
 };
 
