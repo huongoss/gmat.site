@@ -2,6 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Cookiebot Consent Management (placed early, after charset) -->
+    <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="a933901c-4ea2-4a41-91ee-43c30d5dd91b" type="text/javascript" async></script>
+    <!-- Google tag (gtag.js) loaded with build-time env (VITE_GA_MEASUREMENT_ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"></script>
+    <script>
+      // GA measurement ID injected at build time by Vite (must be prefixed VITE_)
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);} // eslint-disable-line
+      const GA_ID = '%VITE_GA_MEASUREMENT_ID%';
+      // If the placeholder was replaced (will not contain % signs) and GA_ID is non-empty, init GA
+      if (GA_ID && !GA_ID.startsWith('%')) {
+        gtag('js', new Date());
+        gtag('config', GA_ID);
+      } else {
+        console.warn('Google Analytics measurement ID not set (VITE_GA_MEASUREMENT_ID). Skipping GA init.');
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GMAT.site – Smart Daily GMAT Practice & Adaptive Prep</title>
     <meta name="description" content="GMAT.site helps you prepare efficiently with science-backed daily GMAT practice, progress tracking, and affordable premium prep." />

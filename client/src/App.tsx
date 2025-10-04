@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
@@ -20,22 +20,12 @@ import NotFound from './pages/NotFound';
 import { RequireAuth, GuestOnly } from './router/guards';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import AnalyticsListener from './components/AnalyticsListener';
-import { initAnalytics } from './utils/analytics';
+// Analytics handled by static gtag snippet in index.html
 import './styles/index.css';
 
 const App: React.FC = () => {
-    useEffect(() => {
-        // Initialize Google Analytics with the build-time injected ID
-        const gaId = (import.meta as any).env?.VITE_GA_MEASUREMENT_ID;
-        if (gaId) {
-            initAnalytics(gaId);
-        }
-    }, []);
-
     return (
         <Router>
-            <AnalyticsListener />
             <div className="app-container">
                 <Navbar />
                 <Routes>
