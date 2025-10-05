@@ -190,14 +190,32 @@ Ensure `MONGODB_URI` is set (in `server/.env` or exported) before running.
 
 ## Google Analytics (Optional)
 
-Set GA4 ID via Cloud Build substitution or local build arg:
+The app now uses the **direct GA4 gtag snippet** injected in `client/index.html` for simplicity and reliability (no custom buffering code).
+
+Configure the ID at build time:
 
 - In `infra/cloudbuild.yaml`: `_VITE_GA_MEASUREMENT_ID: "G-XXXXXXX"`
-- Dockerfile consumes `ARG VITE_GA_MEASUREMENT_ID` → `ENV VITE_GA_MEASUREMENT_ID=...`
+- `infra/Dockerfile` passes it as a build arg (`ARG VITE_GA_MEASUREMENT_ID`) and exports `ENV VITE_GA_MEASUREMENT_ID` so Vite can substitute `%VITE_GA_MEASUREMENT_ID%` placeholders inside `index.html`.
 
-Use in client via: `import.meta.env.VITE_GA_MEASUREMENT_ID`.
+Snippet pattern in `index.html`:
+```html
+<script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  const GA_ID = '%VITE_GA_MEASUREMENT_ID%';
+  if (GA_ID && !GA_ID.startsWith('%')) {
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+  } else {
+    console.warn('GA measurement ID not set (VITE_GA_MEASUREMENT_ID). Skipping GA init.');
+  }
+</script>
+```
 
-Pageviews emitted by `AnalyticsListener` + `initAnalytics()` in `App.tsx`.
+To change the GA property, update the substitution and rebuild. There is currently no runtime (post-build) switch; if needed later, migrate to a small `/config.json` fetch then inject the snippet dynamically.
+
+Legacy React utilities (`initAnalytics`, `AnalyticsListener`) were removed to eliminate race conditions and reduce complexity.
 
 ## Trial vs Registered Flow
 

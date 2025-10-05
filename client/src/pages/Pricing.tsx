@@ -4,6 +4,7 @@ import { OCTOBER_PROMO } from '../constants/promo';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, createBillingPortalSession, getPricing } from '../services/api';
 import './Pricing.css';
+import SEO from '../components/SEO';
 
 const Pricing: React.FC = () => {
   const navigate = useNavigate();
@@ -69,6 +70,11 @@ const Pricing: React.FC = () => {
 
   return (
   <div className="card content-narrow pricing-page">
+      <SEO
+        title="Pricing"
+        description="Affordable GMAT daily practice. Start free, upgrade for full daily sets, progress tracking and upcoming adaptive review."
+        canonical="https://gmat.site/pricing"
+      />
       <h1 className="page-title">Choose your plan</h1>
       <p className="mt-2">Practice smarter with curated daily questions. Upgrade anytime.</p>
 

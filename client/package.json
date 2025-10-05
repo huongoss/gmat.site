@@ -12,7 +12,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0",
     "axios": "^1.6.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "react-helmet-async": "^2.0.4"
   },
   "devDependencies": {
     "vite": "^5.0.0",

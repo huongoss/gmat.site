@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
-import { trackEvent } from '../utils/analytics';
+import SEO from '../components/SEO';
+// Temporary noop for previously used trackEvent references (analytics util removed)
+const trackEvent = (_name: string, _payload?: any) => {};
 import PromoBanner from '../components/PromoBanner';
 
 const bgUrl = 'https://images.unsplash.com/photo-1596496056700-5c4f7a4b93f4?auto=format&fit=crop&w=1600&q=80';
@@ -9,6 +11,11 @@ const bgUrl = 'https://images.unsplash.com/photo-1596496056700-5c4f7a4b93f4?auto
 const Home: React.FC = () => {
   return (
     <div className="home">
+      <SEO
+        title="Smarter GMAT Prep"
+        description="Daily GMAT practice powered by learning science. Build consistency, track progress, and prepare efficiently."
+        canonical="https://gmat.site/"
+      />
       <PromoBanner />
       {/* Hero Section */}
   <section className="hero section-base" aria-labelledby="hero-heading">

@@ -1,4 +1,5 @@
 import React from 'react';
+import SEO from '../components/SEO';
 
 interface FAQItem { q: string; a: string; category: string }
 
@@ -30,8 +31,23 @@ const faqs: FAQItem[] = [
 const categories = Array.from(new Set(faqs.map(f => f.category)));
 
 export default function FAQ() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(f => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a }
+    }))
+  };
   return (
     <div className="content-narrow section-base">
+      <SEO
+        title="FAQ"
+        description="Frequently asked questions about GMAT.site daily practice, plans, and platform policies."
+        canonical="https://gmat.site/faq"
+        jsonLd={jsonLd}
+      />
       <h1 className="hero-title" style={{ fontSize: '2rem', marginBottom: 'var(--space-6)' }}>FAQ</h1>
       {categories.map(cat => (
         <section key={cat} style={{ marginBottom: 'var(--space-6)' }}>
