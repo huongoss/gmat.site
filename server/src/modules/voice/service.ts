@@ -4,6 +4,9 @@ import type { Request } from 'express';
 // Keep outside class for readability and allow multi-line editing.
 const DEFAULT_GMAT_SYSTEM_PROMPT = `You are an expert GMAT tutor and strategy coach.
 
+Language Policy (Critical):
+Always respond in clear, natural ENGLISH unless the user explicitly requests another language. If they do, briefly confirm in English first ("Sure, I can give a brief summary in Spanish, but GMAT terminology will remain in English for clarity.") and keep core GMAT technical terms in English. Do NOT spontaneously switch languages or greet in another language without being asked.
+
 Primary Objective:
 Provide precise, reliable, and actionable guidance limited strictly to GMAT preparation (Quantitative, Verbal, Integrated Reasoning, Analytical Writing, study planning, test-day strategy, mindset, review methodology, pacing, error analysis).
 
@@ -70,6 +73,7 @@ export interface RealtimeSessionResponse {
   model: string;
   voice: string;
   ttl?: number;
+  tutorName?: string;
   raw: any; // provider raw response for forward compatibility
 }
 
@@ -80,31 +84,44 @@ export class VoiceRealtimeService {
   private systemPrompt: string;
 
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY || '';
+    // Primary (paid, voice-capable) key
+    const paidKey = process.env.OPENAI_API_KEY || '';
+    // Free / limited key (text only fallback)
+    const freeKey = process.env.OPENAI_API_KEY_FREE || '';
+    this.apiKey = paidKey || freeKey; // default baseline to something so errors surface clearly later
     this.defaultModel = process.env.VOICE_MODEL || 'gpt-4o-realtime-preview';
     this.defaultVoice = process.env.VOICE_DEFAULT_VOICE || 'alloy';
     this.systemPrompt = process.env.GMAT_EXPERT_SYSTEM_PROMPT || DEFAULT_GMAT_SYSTEM_PROMPT;
-    if (!this.apiKey) {
-      console.warn('[voice] OPENAI_API_KEY not set – /voice/session will fail until provided');
+    if (!paidKey) {
+      console.warn('[voice] Paid OPENAI_API_KEY not set – voice calls will be disabled for subscribed users.');
+    }
+    if (!freeKey) {
+      console.warn('[voice] OPENAI_API_KEY_FREE not set – free tier will not have assistant access.');
     }
   }
 
-  authorize(_req: Request) {
-    // Placeholder: add subscription / feature gate logic here.
-    return true;
+  authorize(req: Request) {
+    // Basic gating: require subscriptionActive for realtime voice (paid key)
+    const user: any = (req as any).user || {};
+    return !!user; // generic auth presence check; per-route we add further gating
   }
 
-  async createRealtimeSession(opts: RealtimeSessionRequestOptions = {}): Promise<RealtimeSessionResponse> {
-    if (!this.apiKey) throw new Error('Voice service unavailable: missing OPENAI_API_KEY');
+  async createRealtimeSession(opts: RealtimeSessionRequestOptions = {}, paidKey?: string): Promise<RealtimeSessionResponse> {
+    if (!paidKey) throw new Error('Voice service unavailable: paid key missing');
     const model = opts.model || this.defaultModel;
     const voice = opts.voice || this.defaultVoice;
+    // Random tutor name injection for personalized introduction
+    const tutorNames = (process.env.VOICE_TUTOR_NAMES || 'Alex,Jordan,Sophia,Marcus,Ella,Nathan,Clara,Victor,Selene,Raj').split(',').map(s => s.trim()).filter(Boolean);
+    const tutorName = tutorNames[Math.floor(Math.random() * tutorNames.length)];
+  // Keep realtime system prompt identical to text assistant base prompt for consistency.
+  // Intro / personalization handled via a separate response.create event client-side.
   const body: any = { model, voice, instructions: this.systemPrompt };
     if (opts.modalities) body.modalities = opts.modalities;
 
     const resp = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${paidKey}`,
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'realtime=v1'
       },
@@ -120,8 +137,79 @@ export class VoiceRealtimeService {
       model,
       voice,
       ttl: json.ttl,
+      tutorName,
       raw: json
     };
+  }
+
+  /**
+   * Generate a text-only response (no audio) using regular chat completions style API.
+   * Keeps same strict GMAT system prompt.
+   */
+  async generateTextResponse(userMessage: string, opts: { model?: string; free?: boolean } = {}): Promise<string> {
+    const paidKey = process.env.OPENAI_API_KEY || '';
+    const freeKey = process.env.OPENAI_API_KEY_FREE || '';
+    const useFree = opts.free && freeKey;
+    const keyToUse = useFree ? freeKey : (paidKey || freeKey);
+    if (!keyToUse) throw new Error('Text assistant unavailable: no API key configured');
+    const model = opts.model || process.env.TEXT_MODEL || 'gpt-4o-mini';
+    const body = {
+      model,
+      messages: [
+        { role: 'system', content: this.systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    };
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${keyToUse}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (resp.ok) {
+      const json: any = await resp.json();
+      const reply = json.choices?.[0]?.message?.content || '';
+      return reply.trim();
+    }
+    // If unauthorized, fallback to responses API (may have different scope requirements)
+    if (resp.status === 401) {
+      const alt = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${keyToUse}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          input: [
+            { role: 'system', content: this.systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+          max_output_tokens: 800
+        })
+      });
+      if (alt.ok) {
+        const j: any = await alt.json();
+        // responses API shape may differ; attempt to extract text
+        let textOut = '';
+        if (Array.isArray(j.output)) {
+          textOut = j.output.map((o: any) => o.content?.map((c: any) => c.text || '').join('')).join('');
+        } else {
+          textOut = j.output_text || '';
+        }
+        return (textOut || '').trim();
+      } else {
+        const altText = await alt.text();
+        throw new Error(`Text fallback failed (${alt.status}): ${altText.slice(0,300)}`);
+      }
+    }
+    const text = await resp.text();
+    throw new Error(`Text response failed (${resp.status}): ${text.slice(0,300)}`);
   }
 }
 

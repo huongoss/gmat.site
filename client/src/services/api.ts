@@ -162,7 +162,25 @@ export const submitRetakeDailyAnswers = async (baseResultId: string, answers: Re
 // Voice (Realtime) – ephemeral session creation
 export const createVoiceSession = async (payload?: { model?: string; voice?: string }) => {
     const res = await api.post('/voice/session', payload || {});
-    return res.data as { model: string; voice: string; client_secret: { value: string; expires_at?: number }; ttl?: number };
+    return res.data as { model: string; voice: string; client_secret: { value: string; expires_at?: number }; ttl?: number; tutorName?: string };
+};
+
+// Voice/Text assistant – text-only response
+export const askVoiceText = async (question: string, model?: string) => {
+    const res = await api.post('/voice/text', { question, model });
+    return res.data as { answer: string };
+};
+
+// Voice usage consumption (increments daily counter before sending a spoken request)
+export const consumeVoiceUsage = async () => {
+    const res = await api.post('/voice/consume', {});
+    return res.data as { remaining: number; used: number; limit: number };
+};
+
+// Voice usage (no increment)
+export const fetchVoiceUsage = async () => {
+    const res = await api.get('/voice/usage');
+    return res.data as { remaining: number; used: number; limit: number };
 };
 
 // Local-only helper to fetch demo questions from public folder

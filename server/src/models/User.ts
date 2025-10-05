@@ -27,6 +27,9 @@ interface IUser extends Document {
     dailyCarryOver?: number; // Remaining entitlement slots (including today + accumulated)
     dailyConsumedToday?: number; // How many consumed on the current server day
     dailyLastSubmitDate?: Date; // Date of last submission affecting daily counters
+    // Voice usage limits
+    voiceResponsesDate?: Date; // UTC day when voiceResponsesCount was last reset
+    voiceResponsesCount?: number; // Number of voice responses consumed today
 }
 
 const UserSchema: Schema = new Schema({
@@ -55,6 +58,9 @@ const UserSchema: Schema = new Schema({
     dailyCarryOver: { type: Number, default: 0 },
     dailyConsumedToday: { type: Number, default: 0 },
     dailyLastSubmitDate: { type: Date },
+    // Voice usage limit tracking
+    voiceResponsesDate: { type: Date },
+    voiceResponsesCount: { type: Number, default: 0 },
     admin: { type: Boolean, default: false },
 }, { timestamps: true });
 
