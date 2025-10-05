@@ -16,12 +16,14 @@ import DailyPractice from './pages/DailyPractice';
 import Review from './pages/Review';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
+import VoicePage from './pages/Voice';
 import NotFound from './pages/NotFound';
 import BlogList from './pages/BlogList';
 import BlogPost from './pages/BlogPost';
 import { RequireAuth, GuestOnly } from './router/guards';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import VoiceFloatingLauncher from './components/VoiceFloatingLauncher';
 // Analytics handled by static gtag snippet in index.html
 import './styles/index.css';
 import { HelmetProvider } from 'react-helmet-async';
@@ -52,9 +54,11 @@ const App: React.FC = () => {
                         <Route path="/review" element={<RequireAuth><Review /></RequireAuth>} />
                         <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
                         <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+                        <Route path="/voice" element={<RequireAuth><VoicePage /></RequireAuth>} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                     <Footer />
+                    <VoiceFloatingLauncher />
                 </div>
             </Router>
         </HelmetProvider>

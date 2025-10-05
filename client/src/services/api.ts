@@ -159,6 +159,12 @@ export const submitRetakeDailyAnswers = async (baseResultId: string, answers: Re
     return res.data;
 };
 
+// Voice (Realtime) – ephemeral session creation
+export const createVoiceSession = async (payload?: { model?: string; voice?: string }) => {
+    const res = await api.post('/voice/session', payload || {});
+    return res.data as { model: string; voice: string; client_secret: { value: string; expires_at?: number }; ttl?: number };
+};
+
 // Local-only helper to fetch demo questions from public folder
 export const fetchDemoQuestions = async (): Promise<Array<{ id: number; question: string; options: { id: string; text: string }[]; answer: string }>> => {
     const res = await fetch('/data/demo-questions.json');

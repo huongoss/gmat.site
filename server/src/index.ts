@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import testRoutes from './routes/tests';
 import resultRoutes from './routes/results';
 import supportRoutes from './routes/support';
+import voiceRoutes from './routes/voice';
 import adminRoutes from './routes/admin';
 import paymentRoutes from './routes/payments';
 import cors from 'cors';
@@ -32,7 +33,8 @@ if (process.env.DEBUG_CONFIG === '1') {
 app.use(cors());
 app.use(express.json());
 // Enable gzip/Brotli compression (improves HTML transfer size for SEO performance signals)
-app.use(compression());
+// Cast to any to satisfy older @types/express generic mismatch with compression's overloaded signature
+app.use(compression() as any);
 
 // Optional canonical redirect: enforce non-www (can toggle via CANONICAL_ENFORCE=1)
 app.use((req, res, next) => {
@@ -87,6 +89,7 @@ app.use('/api/results', resultRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', (req, _res, next) => { console.log('[payments-route] hit', req.method, req.originalUrl); next(); }, paymentRoutes);
+app.use('/api/voice', voiceRoutes);
 
 // Dev helper: endpoint to receive client console log forwarding
 if (process.env.NODE_ENV !== 'production') {
