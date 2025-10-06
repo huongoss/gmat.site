@@ -19,7 +19,18 @@ const PORT = Number(process.env.PORT) || 8080;
 
 // Optional config diagnostics (enable by setting DEBUG_CONFIG=1)
 if (process.env.DEBUG_CONFIG === '1') {
-  const keys = ['MONGODB_URI','JWT_SECRET','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','SENDGRID_API_KEY'];
+  // Intentionally only report presence/length, never values, for secrets.
+  const keys = [
+    'MONGODB_URI',
+    'JWT_SECRET',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'SENDGRID_API_KEY',
+    // Server‑only model / API keys – must never be exposed to client bundle.
+    'OPENAI_API_KEY',
+    'OPENAI_API_KEY_FREE',
+    'RECAPTCHA_SECRET_KEY'
+  ];
   const report: Record<string,string> = {};
   for (const k of keys) {
     const v = process.env[k];
@@ -27,6 +38,11 @@ if (process.env.DEBUG_CONFIG === '1') {
   }
   console.log('[config-diagnostics]', report);
   if (!process.env.MONGODB_URI) console.warn('[config] MONGODB_URI not set; will fallback to local default');
+  // Guard rails: warn if someone accidentally injected a VITE_ prefixed OpenAI key (would leak to client build)
+  const leakCandidates = Object.keys(process.env).filter(k => /VITE_.*OPENAI/i.test(k));
+  if (leakCandidates.length) {
+    console.warn('[config] Potential client exposure of OpenAI keys via', leakCandidates);
+  }
 }
 
 // Middleware
