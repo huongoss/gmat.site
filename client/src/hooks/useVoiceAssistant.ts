@@ -31,8 +31,24 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
   const lastCountedUserUtteranceIdsRef = useRef<Set<string>>(new Set()); // track which spoken user utterances consumed quota
   const [voiceQuota, setVoiceQuota] = useState<{ remaining: number; used: number; limit: number } | null>(null);
   const startingRef = useRef(false); // prevents multiple concurrent session starts
-  const minuteUsageTimerRef = useRef<number | null>(null); // interval id for per-minute usage counting
-  const minuteTickRef = useRef(0);
+  const [lastResponseTime, setLastResponseTime] = useState<number>(Date.now()); // timestamp of last received message
+
+  // Initial quota fetch (for showing disabled call button before starting a session)
+  useEffect(() => {
+    fetchVoiceUsage().then(setVoiceQuota).catch(() => { /* ignore unauth/guest */ });
+  }, []);
+
+  // When connected and quota hits zero, mute local audio tracks (disable sending) without closing session.
+  useEffect(() => {
+    if (statusRef.current === 'connected') {
+      const tracks = localStreamRef.current?.getAudioTracks() || [];
+      if (voiceQuota && voiceQuota.remaining <= 0) {
+        tracks.forEach(t => { if (t.enabled) t.enabled = false; });
+      } else {
+        tracks.forEach(t => { if (!t.enabled) t.enabled = true; });
+      }
+    }
+  }, [voiceQuota]);
 
   const ensureRemoteAudioEl = () => {
     if (!remoteAudioRef.current) {
@@ -132,14 +148,7 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
             }
             return;
         }
-        // Skip very first assistant greeting (do not penalize)
-        if (!greetedRef.current) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('[voice][quota] skipping first greeting answer for quota');
-          }
-          countedAnswerIdsRef.current.add(answerId); // mark so we don't reconsider
-          return;
-        }
+        countedAnswerIdsRef.current.add(answerId); // mark so we don't reconsider
         try {
           const usage = await consumeVoiceUsage();
           countedAnswerIdsRef.current.add(answerId);
@@ -172,8 +181,12 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
       };
       dc.onmessage = (e) => {
         try {
+          setLastResponseTime(Date.now());
           const msg = JSON.parse(e.data);
-          if (msg.type === 'transcript.delta') {
+          if(msg.type === 'input_audio_buffer.speech_stopped') {
+            countAssistantAnswer(msg.item_id);
+          }
+          else if (msg.type === 'transcript.delta') {
             setTranscript(prev => {
               const existing = prev.find(t => t.id === msg.id);
               if (existing) return prev.map(t => t.id === msg.id ? { ...t, text: t.text + msg.delta } : t);
@@ -188,12 +201,10 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
             }
             // (No longer counting on user transcript completion; usage now tied to assistant answer completion events.)
           } else if (msg.type === 'response.created') {
-            console.log('[voice:event] response.created', msg);
           } else if (msg.type === 'response.completed') {
             console.log('[voice:event] response.completed', msg);
           } else if (msg.type === 'response.audio_transcript.done') {
             // Audio answer finished – count assistant answer usage.
-            if (msg.response_id) countAssistantAnswer(msg.response_id);
           } else if (msg.type === 'response.output_text.delta') {
             setTranscript(prev => {
               const existing = prev.find(t => t.id === msg.response_id);
@@ -284,54 +295,25 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
     }
   }, [status]);
 
-  // Per-minute fallback usage counting: every full minute of a connected session counts as one answer.
+  // Inactivity watchdog: stop after 30s silence ONLY if quota not exhausted (so user can keep reviewing when quota=0).
   useEffect(() => {
-    const active = statusRef.current === 'connected';
-    if (active && minuteUsageTimerRef.current == null) {
-      minuteTickRef.current = 0;
-      minuteUsageTimerRef.current = window.setInterval(async () => {
-        // Each minute increment attempt; stop if quota depleted
-        minuteTickRef.current += 1;
-        if (!voiceQuota || voiceQuota.remaining > 0) {
-          try {
-            const usage = await consumeVoiceUsage();
-            setVoiceQuota(usage);
-            if (process.env.NODE_ENV !== 'production') {
-              console.debug('[voice][quota] minute usage consumed', { minute: minuteTickRef.current, usage });
-            }
-            if (usage.remaining <= 0 && minuteUsageTimerRef.current) {
-              window.clearInterval(minuteUsageTimerRef.current);
-              minuteUsageTimerRef.current = null;
-            }
-          } catch (e: any) {
-            const statusCode = e?.response?.status;
-            const code = e?.response?.data?.code;
-            if (statusCode === 429 || code === 'VOICE_DAILY_LIMIT') {
-              setVoiceQuota(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : { remaining: 0, used: 10, limit: 10 });
-              if (minuteUsageTimerRef.current) {
-                window.clearInterval(minuteUsageTimerRef.current);
-                minuteUsageTimerRef.current = null;
-              }
-            }
-          }
-        } else if (minuteUsageTimerRef.current) {
-          window.clearInterval(minuteUsageTimerRef.current);
-          minuteUsageTimerRef.current = null;
-        }
-      }, 60_000); // 1 minute cadence
+    if (status !== 'connected') return;
+    if (voiceQuota && voiceQuota.remaining <= 0) return; // keep session open for read-only review
+
+    const elapsed = Date.now() - lastResponseTime;
+    const remaining = 30_000 - elapsed;
+    if (remaining <= 0) {
+      stop();
+      return;
     }
-    if (!active && minuteUsageTimerRef.current != null) {
-      window.clearInterval(minuteUsageTimerRef.current);
-      minuteUsageTimerRef.current = null;
-    }
-    return () => {
-      if (minuteUsageTimerRef.current) {
-        window.clearInterval(minuteUsageTimerRef.current);
-        minuteUsageTimerRef.current = null;
+    const id = setTimeout(() => {
+      if (Date.now() - lastResponseTime >= 30_000) {
+        console.warn('[voice] inactivity >30s, stopping call');
+        stop();
       }
-    };
-  // We intentionally depend on status and voiceQuota (for early stop); statusRef mirrors status anyway.
-  }, [status, voiceQuota]);
+    }, remaining);
+    return () => clearTimeout(id);
+  }, [status, lastResponseTime, stop, voiceQuota]);
 
   const sendText = useCallback(async (text: string) => {
     const trimmed = text.trim();

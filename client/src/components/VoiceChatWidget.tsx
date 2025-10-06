@@ -18,7 +18,7 @@ const chipBorder = '#c7d2fe';
 
 const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose }) => {
   const { status, error, start, stop, transcript, sendText, tutorName, voiceQuota } = useVoiceAssistant({ model, voice });
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [input, setInput] = useState('');
   const [chatTranscript, setChatTranscript] = useState<{ id: string; role: 'user' | 'assistant'; text: string }[]>([]);
@@ -35,25 +35,52 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
   const combinedTranscript = mode === 'voice' ? transcript : chatTranscript;
   const typingId = 'typing-indicator';
 
+  // Preparing (10s) phase: run exactly once per transition into 'calling'.
+  // BUG FIX: spinnerDone was previously in the dependency array causing a second 10s cycle when it flipped true.
   useEffect(() => {
-    if (mode === 'calling') {
-      const startTs = Date.now();
-      setSpinnerDone(false); // reset spinner state once on entering calling mode
-      progressTimerRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTs) / 1000);
-        setCallElapsed(elapsed);
-        if (elapsed >= 10 && !spinnerDone) {
-          setSpinnerDone(true); // triggers separate effect to start session
-        }
-        // Switch to voice UI once connected after spinner period
-        if (elapsed >= 10 && statusRef.current === 'connected') {
-          setMode('voice');
-          if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
-        }
-      }, 500);
-      return () => { if (progressTimerRef.current) window.clearInterval(progressTimerRef.current); };
+    if (mode !== 'calling') return;
+    // Clear any stale interval (defensive)
+    if (progressTimerRef.current) {
+      window.clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
+    const startTs = Date.now();
+    setSpinnerDone(false); // initialize spinner countdown
+    progressTimerRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTs) / 1000);
+      setCallElapsed(elapsed);
+      if (elapsed >= 10 && !spinnerDone) {
+        setSpinnerDone(true); // triggers second effect to actually start session
+      }
+      if (elapsed >= 10 && statusRef.current === 'connected') {
+        setMode('voice');
+        if (progressTimerRef.current) {
+          window.clearInterval(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+      }
+    }, 500);
+    return () => {
+      if (progressTimerRef.current) {
+        window.clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+    };
   }, [mode]);
+
+  // Quota read-only notice (one-time per depletion while session active)
+  const quotaNoticeRef = useRef(false);
+  useEffect(() => {
+    if ((mode === 'voice' || mode === 'calling') && voiceQuota && voiceQuota.remaining <= 0) {
+      if (!quotaNoticeRef.current) {
+        setChatTranscript(prev => prev.some(m => m.id.startsWith('quota-ro-')) ? prev : prev.concat({ id: 'quota-ro-'+Date.now().toString(36), role: 'assistant', text: 'Voice quota reached – session is now read-only until tomorrow.' }));
+        quotaNoticeRef.current = true;
+      }
+    } else if (voiceQuota && voiceQuota.remaining > 0) {
+      // reset notice flag if quota renewed next day
+      quotaNoticeRef.current = false;
+    }
+  }, [voiceQuota, mode]);
 
   // Separate effect: initiate realtime start only after spinner completes 10s
   useEffect(() => {
@@ -69,6 +96,10 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
   const handleTextSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
+    if ((mode === 'voice' || mode === 'calling') && voiceQuota && voiceQuota.remaining <= 0) {
+      setChatTranscript(prev => prev.concat({ id: 'quota-ro-'+Date.now().toString(36), role: 'assistant', text: 'Voice quota reached – session is read-only.' }));
+      return;
+    }
     setSending(true);
     const id = 'u-' + Date.now().toString(36);
     setChatTranscript(prev => [...prev, { id, role: 'user', text }]);
@@ -76,7 +107,24 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
     try {
       // Add typing placeholder
       setChatTranscript(prev => [...prev, { id: typingId, role: 'assistant', text: 'Typing…' }]);
-      const res = await askVoiceText(text);
+      let res;
+      try {
+        res = await askVoiceText(text);
+      } catch (err: any) {
+        // If guest free limit reached (429) show friendly upgrade message
+        const status = err?.response?.status;
+        const code = err?.response?.data?.code;
+        if (status === 429 && code === 'GUEST_LIMIT') {
+          setChatTranscript(prev => prev.filter(m => m.id !== typingId).concat({
+            id: 'limit-' + Date.now().toString(36),
+            role: 'assistant',
+            text: 'You reached today\'s free question limit. Create a free account for more and unlock progress tracking.'
+          }));
+          setSending(false);
+          return;
+        }
+        throw err;
+      }
       setChatTranscript(prev => prev.filter(m => m.id !== typingId).concat({ id: 'a-' + Date.now().toString(36), role: 'assistant', text: res.answer }));
       if (mode === 'idle') setMode('text');
     } catch (e: any) {
@@ -121,12 +169,16 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
   useEffect(() => {
     if ((mode === 'voice' || mode === 'calling') && voiceQuota && voiceQuota.remaining <= 0) {
       // Gracefully end the session
-      endCall();
+      //endCall();
     }
   }, [voiceQuota, mode]);
 
   const handleChip = (c: string) => {
     if (mode === 'voice') {
+      if (voiceQuota && voiceQuota.remaining <= 0) {
+        setChatTranscript(prev => prev.concat({ id: 'quota-ro-'+Date.now().toString(36), role: 'assistant', text: 'Voice quota reached – cannot send more prompts.' }));
+        return;
+      }
       sendText(c);
     } else {
       setInput(c);
@@ -135,7 +187,7 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
 
   return (
     <div style={{ width: 420, maxWidth: '100%', display: 'flex', flexDirection: 'column', height: 560, background: '#fff', border: '1px solid #e3e8f0', borderRadius: 16, boxShadow: '0 4px 18px rgba(0,0,0,0.08)', overflow: 'hidden', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12 }}>
+  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
         <div style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)', width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600 }}>GM</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>GMAT Expert Tutor{tutorName ? ` · ${tutorName}` : ''}</div>
@@ -144,6 +196,11 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
           </div>
         </div>
         {onClose && <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>}
+        {!isAuthenticated && (
+          <div style={{ position: 'absolute', bottom: -22, right: 12, background: '#1e293b', color: '#fff', padding: '4px 8px', borderRadius: 8, fontSize: 11 }}>
+            Guest mode · <a href="/register" style={{ color: '#93c5fd', textDecoration: 'none' }}>Sign up</a>
+          </div>
+        )}
       </div>
       {/* Prompt chips removed to maximize chat space */}
       {mode !== 'voice' && (
@@ -204,19 +261,20 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
                 lineHeight: 1,
                 width: 46,
                 height: 42,
-                opacity: (voiceQuota && voiceQuota.remaining <= 0) ? 0.55 : 1,
-                cursor: (voiceQuota && voiceQuota.remaining <= 0) ? 'not-allowed' : 'pointer'
+                opacity: (voiceQuota && voiceQuota.remaining <= 0) ? 0.45 : 1,
+                cursor: (voiceQuota && voiceQuota.remaining <= 0) ? 'not-allowed' : 'pointer',
+                position: 'relative',
+                filter: (voiceQuota && voiceQuota.remaining <= 0) ? 'grayscale(55%)' : 'none',
+                boxShadow: (voiceQuota && voiceQuota.remaining <= 0) ? 'inset 0 0 0 1px rgba(0,0,0,0.15)' : 'none'
               }}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.18 2h3a2 2 0 0 1 2 1.72c.12.81.37 1.6.72 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.74-1.36a2 2 0 0 1 2.11-.45c.74.35 1.53.6 2.34.72A2 2 0 0 1 22 16.92z" />
               </svg>
+              {voiceQuota && voiceQuota.remaining <= 0 && (
+                <span style={{ position: 'absolute', top: -6, right: -6, background: '#1e293b', color: '#fff', fontSize: 9, padding: '2px 5px', borderRadius: 8, fontWeight: 600 }}>0</span>
+              )}
             </button>
-            {voiceQuota && voiceQuota.remaining <= 0 && (
-              <div style={{ position: 'absolute', bottom: 70, right: 70, background: '#1e293b', color: '#fff', padding: '8px 12px', borderRadius: 10, fontSize: 11, boxShadow: '0 4px 12px rgba(0,0,0,0.18)', maxWidth: 220 }}>
-                Daily voice limit reached – try again tomorrow.
-              </div>
-            )}
             {showUpgrade && !user?.subscriptionActive && (
               <div style={{ position: 'absolute', bottom: 70, right: 16, background: '#1e293b', color: '#fff', padding: '10px 14px', borderRadius: 12, width: 260, fontSize: 12, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>Voice Tutor is Pro</div>
@@ -230,7 +288,11 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
           </div>
           <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
             <span>Status: {mode}</span>
-            <span>Text mode (no mic) until call</span>
+            {voiceQuota && voiceQuota.remaining <= 0 ? (
+              <span style={{ color: '#dc2626', fontWeight: 500 }}>Voice limit reached – text only today</span>
+            ) : (
+              <span>Text mode (no mic) until call</span>
+            )}
           </div>
         </div>
       )}

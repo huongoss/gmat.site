@@ -1,5 +1,6 @@
 import express from 'express';
 import requireAuth from '../middleware/requireAuth';
+import optionalAuth from '../middleware/optionalAuth';
 import { voiceRealtimeService } from '../modules/voice/service';
 import { User } from '../models/User';
 
@@ -43,24 +44,54 @@ router.post('/session', requireAuth, async (req, res) => {
   }
 });
 
-// Text-only assistant (no realtime / audio). Provides GMAT expert answer to a question.
-router.post('/text', requireAuth, async (req, res) => {
+// In‑memory guest rate limiter (resets daily UTC) for public text assistant usage.
+// NOTE: Simple in-process store; acceptable for small scale. For multi-instance deployments,
+// replace with Redis or another shared store to enforce global limits.
+interface RateEntry { count: number; reset: number }
+const guestRateStore: Map<string, RateEntry> = new Map();
+const GUEST_DAILY_LIMIT = parseInt(process.env.GUEST_TEXT_DAILY_LIMIT || '20', 10);
+
+function getRateEntry(key: string): RateEntry {
+  const now = Date.now();
+  const utc = new Date();
+  const resetDate = new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() + 1));
+  const resetTs = resetDate.getTime();
+  const existing = guestRateStore.get(key);
+  if (!existing || existing.reset <= now) {
+    const fresh = { count: 0, reset: resetTs };
+    guestRateStore.set(key, fresh);
+    return fresh;
+  }
+  return existing;
+}
+
+// Text-only assistant (no realtime / audio). Provides GMAT expert answer.
+// PUBLIC: Allows guests (unauthenticated). Authenticated users may have higher quality (paid key) if subscribed.
+router.post('/text', optionalAuth, async (req, res) => {
   const paidKey = process.env.OPENAI_API_KEY;
   const freeKey = process.env.OPENAI_API_KEY_FREE;
   if (!paidKey && !freeKey) {
     return res.status(503).json({ message: 'Assistant not configured (no API key)' });
   }
   try {
-    if (!voiceRealtimeService.authorize(req)) {
-      return res.status(403).json({ message: 'Not allowed to use assistant feature' });
-    }
     const { question, model } = req.body || {};
     if (!question || typeof question !== 'string') {
       return res.status(400).json({ message: 'Missing question' });
     }
-    const user: any = (req as any).user || {};
-    const answer = await voiceRealtimeService.generateTextResponse(question, { model, free: !user.subscriptionActive });
-    res.json({ answer });
+    const user: any = (req as any).user || null;
+    const isGuest = !user;
+    if (isGuest) {
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+      const entry = getRateEntry(ip);
+      if (entry.count >= GUEST_DAILY_LIMIT) {
+        return res.status(429).json({ message: 'Daily free question limit reached. Create a free account for more.', code: 'GUEST_LIMIT' });
+      }
+      entry.count++;
+    }
+    // Decide whether to force free key: guests always free; logged-in uses paid unless not subscribed.
+    const free = isGuest || !user.subscriptionActive;
+    const answer = await voiceRealtimeService.generateTextResponse(question, { model, free });
+    res.json({ answer, guest: isGuest });
   } catch (e: any) {
     const msg = e?.message || 'Unknown error';
     console.error('[voice] text error', msg.slice(0,400));
@@ -81,7 +112,7 @@ router.post('/consume', requireAuth, async (req, res) => {
     if (!user.subscriptionActive) {
       return res.status(402).json({ message: 'Subscription required', code: 'VOICE_SUBSCRIPTION_REQUIRED' });
     }
-    const MAX_DAILY = 3;
+    const MAX_DAILY = 1;
     const now = new Date();
     const startOfUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const last = user.voiceResponsesDate ? new Date(user.voiceResponsesDate) : null;
@@ -112,7 +143,7 @@ router.get('/usage', requireAuth, async (req, res) => {
     if (!user.subscriptionActive) {
       return res.status(402).json({ message: 'Subscription required', code: 'VOICE_SUBSCRIPTION_REQUIRED' });
     }
-    const MAX_DAILY = 3;
+    const MAX_DAILY = 1;
     const now = new Date();
     const startOfUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const last = user.voiceResponsesDate ? new Date(user.voiceResponsesDate) : null;
