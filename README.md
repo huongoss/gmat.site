@@ -1,4 +1,5 @@
 # GMAT Practice App
+<img width="3801" height="1850" alt="image" src="https://github.com/user-attachments/assets/91136501-983f-4b6c-827e-8675c136c979" />
 
 A full‑stack (React + Node.js + MongoDB) application for realistic GMAT practice with trial access, subscription upgrade path, performance tracking, and motivational feedback.
 
