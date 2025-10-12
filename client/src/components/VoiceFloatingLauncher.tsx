@@ -19,8 +19,33 @@ const VoiceFloatingLauncher: React.FC = () => {
         )}
       </div>
       {open && (
-        <div style={{ position: 'fixed', bottom: 100, right: 24, zIndex: 1300 }}>
-          <div style={{ position: 'relative' }}>
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 100,
+            right: 24,
+            zIndex: 1300,
+            width: 'auto',
+          }}
+        >
+          {/* Dim overlay on small screens to focus the chat */}
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.25)',
+              display: 'none'
+            }}
+            className="vcw-overlay"
+          />
+          <style>{`
+            @media (max-width: 640px) {
+              .vcw-overlay { display: block; }
+              /* Move the closed launcher away from edges on tiny screens */
+              .ask-launcher { bottom: 16px; right: 16px; }
+            }
+          `}</style>
+          <div style={{ position: 'relative', maxWidth: '100vw' }}>
             {!isAuthenticated && (
               <div style={{ position: 'absolute', top: -34, right: 0, background: '#1e293b', color: '#fff', padding: '6px 10px', borderRadius: 10, fontSize: 11, boxShadow: '0 4px 10px rgba(0,0,0,0.15)' }}>
                 Guest mode: text Q&A only. <a href="/register" style={{ color: '#93c5fd', textDecoration: 'none' }}>Sign up</a> for more.

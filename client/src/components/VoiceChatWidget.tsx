@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import './VoiceChatWidget.css';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
 import { useAuth } from '../context/AuthContext';
 import { askVoiceText } from '../services/api';
@@ -186,8 +187,8 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
   };
 
   return (
-    <div style={{ width: 420, maxWidth: '100%', display: 'flex', flexDirection: 'column', height: 560, background: '#fff', border: '1px solid #e3e8f0', borderRadius: 16, boxShadow: '0 4px 18px rgba(0,0,0,0.08)', overflow: 'hidden', fontFamily: 'system-ui, sans-serif' }}>
-  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+    <div className="vcw-container">
+  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
         <div style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)', width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600 }}>GM</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>GMAT Expert Tutor{tutorName ? ` · ${tutorName}` : ''}</div>
@@ -204,13 +205,13 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
       </div>
       {/* Prompt chips removed to maximize chat space */}
       {mode !== 'voice' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#ffffff', scrollBehavior: 'smooth' }}>
+        <div className="vcw-messages">
           {combinedTranscript.map(t => {
             const isUser = t.role === 'user';
             return (
-              <div key={t.id} style={{ display: 'flex', marginBottom: 12, justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+              <div key={t.id} className={`vcw-row ${isUser ? 'vcw-row--user' : 'vcw-row--assistant'}`}>
                 {!isUser && <div style={{ width: 36, height: 36, background: '#eef2ff', borderRadius: 10, marginRight: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#4f46e5', fontWeight: 600 }}>GM</div>}
-                <div style={{ maxWidth: '75%', background: isUser ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : '#f1f5f9', color: isUser ? '#fff' : '#1e293b', padding: '8px 12px', borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px', fontSize: 13, whiteSpace: 'pre-wrap' }}>{t.text}</div>
+                <div className={`vcw-bubble ${isUser ? 'vcw-bubble--user' : 'vcw-bubble--assistant'}`}>{t.text}</div>
               </div>
             );
           })}
@@ -237,10 +238,10 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
       )}
       {error && <div style={{ padding: '4px 12px', color: '#b00020', fontSize: 12 }}>Error: {error}</div>}
       {mode !== 'voice' && mode !== 'calling' && (
-        <div style={{ padding: 12, borderTop: '1px solid #e5e7eb', background: '#f8fafc' }}>
+        <div style={{ padding: 12, borderTop: '1px solid #e5e7eb', background: '#f8fafc', position: 'sticky', bottom: 0, zIndex: 2 }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextSend(); } }} placeholder={'Ask a GMAT question...'} style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1px solid #cbd5e1', fontSize: 13 }} />
-            <button onClick={handleTextSend} disabled={!input.trim() || sending} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 12, padding: '0 16px', fontWeight: 600, cursor: 'pointer' }}>{sending ? '...' : 'Send'}</button>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleTextSend(); } }} placeholder={'Ask a GMAT question...'} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: '1px solid #cbd5e1', fontSize: 15 }} />
+            <button onClick={handleTextSend} disabled={!input.trim() || sending} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 12, padding: '0 16px', fontWeight: 600, cursor: 'pointer', minWidth: 72, height: 44 }}>{sending ? '...' : 'Send'}</button>
             <button
               onClick={handleTalkClick}
               disabled={status === 'requesting' || (!!voiceQuota && voiceQuota.remaining <= 0)}
@@ -259,8 +260,8 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
                 justifyContent: 'center',
                 flexShrink: 0,
                 lineHeight: 1,
-                width: 46,
-                height: 42,
+                width: 50,
+                height: 44,
                 opacity: (voiceQuota && voiceQuota.remaining <= 0) ? 0.45 : 1,
                 cursor: (voiceQuota && voiceQuota.remaining <= 0) ? 'not-allowed' : 'pointer',
                 position: 'relative',

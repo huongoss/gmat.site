@@ -127,6 +127,43 @@ a.btn:focus-visible, a.btn-outline:focus-visible, a.btn-danger:focus-visible, a.
 .option:hover { background: #e9eef5; }
 .option.selected { border-color: var(--color-primary); background: #e8efff; box-shadow: 0 0 0 2px rgba(37,99,235,0.25) inset; }
 
+.question-ds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.question-ds__stem {
+  margin: 0;
+}
+
+.question-ds__statements {
+  list-style: none;
+  padding: 0;
+  padding-bottom:1rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.question-ds__statement {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.question-ds__label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  display: block;
+  padding-right: 1rem;
+}
+
+.question-ds__text {
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
 /* Timer */
 .timer { font-size: 1.25rem; color: var(--color-danger); font-weight: 600; }
 

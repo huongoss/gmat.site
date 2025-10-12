@@ -65,6 +65,7 @@ const Test: React.FC = () => {
               totalQuestions={totalQuestions}
               onRetake={handleRetake}
               onReview={handleReview}
+              disableReview={!isAuthenticated}
             />
             <EmotionFeedback correctAnswers={score} totalQuestions={totalQuestions} />
           </div>

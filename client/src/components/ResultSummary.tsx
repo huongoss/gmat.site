@@ -9,9 +9,10 @@ interface ResultSummaryProps {
     subtitle?: string;
     badges?: string[];
     disableRetake?: boolean;
+    disableReview?: boolean;
 }
 
-const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, onRetake, onReview, title = 'Test Results', subtitle, badges = [], disableRetake }) => {
+const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, onRetake, onReview, title = 'Test Results', subtitle, badges = [], disableRetake, disableReview }) => {
     const percentage = (score / totalQuestions) * 100;
 
     const getFeedbackMessage = () => {
@@ -41,7 +42,7 @@ const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, on
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn" onClick={onRetake} disabled={disableRetake}>Retake Test</button>
-                <button className="btn-outline" onClick={onReview}>Review Answers</button>
+                <button className="btn-outline" onClick={onReview} disabled={disableReview} title={disableReview ? 'Review not available' : undefined}>Review Answers</button>
             </div>
         </div>
     );

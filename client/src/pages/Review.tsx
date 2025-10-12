@@ -180,6 +180,7 @@ const Review: React.FC = () => {
                                         subtitle={new Date(r.dateTaken).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}
                                         badges={[title, ...(isDaily && selectedDate===dateKey(today)? ['Today'] : []), ...(isRetake? ['Retake'] : [])]}
                                         disableRetake={!(isDaily && isSelectedToday)}
+                                        disableReview={true}
                                     />
                                 </div>
                             );

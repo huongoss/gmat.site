@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../services/api';
 import { useLocation } from 'react-router-dom';
+import QuestionCard from '../components/QuestionCard';
 
 const DailyPractice: React.FC = () => {
   const navigate = useNavigate();
@@ -170,29 +171,16 @@ const DailyPractice: React.FC = () => {
       )}
 
       {questions.map((q, idx) => (
-        <div key={q.id} className="question-card" style={{ marginTop: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <h2 className="question" style={{ margin: 0 }}>Q{q.sequenceNumber || idx + 1}</h2>
+        <div key={q.id} style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Q{q.sequenceNumber || idx + 1}</h3>
           </div>
-          <p>{q.question}</p>
-          <div className="options" role="radiogroup" aria-label={`Question ${idx + 1}`}>
-            {q.options.map((o) => {
-              const selected = answers[q.id] === o.id;
-              return (
-                <button
-                  key={o.id}
-                  className={`option ${selected ? 'selected' : ''}`}
-                  role="radio"
-                  aria-checked={selected}
-                  disabled={submitting}
-                  onClick={() => onSelect(q.id, o.id)}
-                >
-                  <span className="option-letter">{o.id.toUpperCase()}</span>
-                  <span className="option-text">{o.text}</span>
-                </button>
-              );
-            })}
-          </div>
+          <QuestionCard
+            question={q.question}
+            options={q.options}
+            selectedOptionId={answers[q.id] || null}
+            onOptionSelect={(optionId) => onSelect(q.id, optionId)}
+          />
         </div>
       ))}
 
