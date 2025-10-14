@@ -41,29 +41,37 @@ const MathRenderer: React.FC<MathRendererProps> = ({ text, className }) => {
     // Clear the container
     containerRef.current.innerHTML = '';
 
-    // Split the text by $ delimiters to separate text and math expressions
-    const parts = text.split(/(\$[^$]+\$)/);
+    // Normalize common LaTeX delimiters from model outputs:
+    //  - \\(...\\) -> $...$
+    //  - \\[...\\] -> $$...$$
+    // Use [\s\S] to support multi-line content inside delimiters
+    const normalized = text
+      .replace(/\\\[([\s\S]+?)\\\]/g, (_m, inner) => `$$${inner}$$`)
+      .replace(/\\\(([\s\S]+?)\\\)/g, (_m, inner) => `$${inner}$`);
+
+    // Split the text by $$...$$ (display) or $...$ (inline) delimiters to separate text and math expressions
+    const parts = normalized.split(/(\$\$[^$]+\$\$|\$[^$]+\$)/);
 
     parts.forEach((part) => {
-      // Check if this part is a math expression (starts and ends with $)
-      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-        // Remove the $ delimiters and render as math
-        const mathExpression = part.slice(1, -1);
+      // Check if this part is a math expression (starts and ends with $$ or $)
+      if ((part.startsWith('$$') && part.endsWith('$$') && part.length > 4) || (part.startsWith('$') && part.endsWith('$') && part.length > 2)) {
+        const isDisplay = part.startsWith('$$');
+        const mathExpression = isDisplay ? part.slice(2, -2) : part.slice(1, -1);
         if (isLikelyMath(mathExpression)) {
           const span = document.createElement('span');
           try {
             katex.render(mathExpression, span, {
               throwOnError: false,
-              displayMode: false,
+              displayMode: isDisplay,
             });
           } catch (error) {
             // If KaTeX fails to render, fall back to displaying the original text
             console.warn('Failed to render math expression:', mathExpression, error);
-            span.textContent = `$${mathExpression}$`;
+            span.textContent = isDisplay ? `$$${mathExpression}$$` : `$${mathExpression}$`;
           }
           containerRef.current?.appendChild(span);
         } else {
-          const textNode = document.createTextNode(`$${mathExpression}$`);
+          const textNode = document.createTextNode(isDisplay ? `$$${mathExpression}$$` : `$${mathExpression}$`);
           containerRef.current?.appendChild(textNode);
         }
       } else if (part) {

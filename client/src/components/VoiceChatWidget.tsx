@@ -3,6 +3,8 @@ import './VoiceChatWidget.css';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
 import { useAuth } from '../context/AuthContext';
 import { askVoiceText } from '../services/api';
+import MathRenderer from './MathRenderer';
+import MarkdownMath from './MarkdownMath';
 // Removed AskGmatDialog prompt queue to simplify and avoid duplicate sends
 // import { useAskGmatDialog } from '../context/AskGmatContext';
 import { useCustomPrompt } from '../context/CustomPromptContext';
@@ -238,7 +240,15 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
             return (
               <div key={t.id} className={`vcw-row ${isUser ? 'vcw-row--user' : 'vcw-row--assistant'}`}>
                 {!isUser && <div style={{ width: 36, height: 36, background: '#eef2ff', borderRadius: 10, marginRight: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#4f46e5', fontWeight: 600 }}>GM</div>}
-                <div className={`vcw-bubble ${isUser ? 'vcw-bubble--user' : 'vcw-bubble--assistant'}`}>{t.text}</div>
+                <div className={`vcw-bubble ${isUser ? 'vcw-bubble--user' : 'vcw-bubble--assistant'}`}>
+                  {isUser ? (
+                    t.text
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                      <MarkdownMath text={t.text} />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
