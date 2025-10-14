@@ -29,12 +29,18 @@ if (__env.DEV) {
   }
 }
 import { AuthProvider } from './context/AuthContext';
+import { AskGmatProvider } from './context/AskGmatContext';
+import { CustomPromptProvider } from './context/CustomPromptContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <AskGmatProvider>
+        <CustomPromptProvider>
+          <App />
+        </CustomPromptProvider>
+      </AskGmatProvider>
     </AuthProvider>
   </React.StrictMode>
 );

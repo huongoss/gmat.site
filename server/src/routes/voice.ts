@@ -112,7 +112,7 @@ router.post('/consume', requireAuth, async (req, res) => {
     if (!user.subscriptionActive) {
       return res.status(402).json({ message: 'Subscription required', code: 'VOICE_SUBSCRIPTION_REQUIRED' });
     }
-    const MAX_DAILY = 1;
+    const MAX_DAILY = 2;
     const now = new Date();
     const startOfUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const last = user.voiceResponsesDate ? new Date(user.voiceResponsesDate) : null;
@@ -143,7 +143,7 @@ router.get('/usage', requireAuth, async (req, res) => {
     if (!user.subscriptionActive) {
       return res.status(402).json({ message: 'Subscription required', code: 'VOICE_SUBSCRIPTION_REQUIRED' });
     }
-    const MAX_DAILY = 1;
+    const MAX_DAILY = 2;
     const now = new Date();
     const startOfUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const last = user.voiceResponsesDate ? new Date(user.voiceResponsesDate) : null;

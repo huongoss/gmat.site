@@ -4,6 +4,8 @@ import useAuth from '../hooks/useAuth';
 import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../services/api';
 import { useLocation } from 'react-router-dom';
 import QuestionCard from '../components/QuestionCard';
+import { useAskGmatDialog } from '../context/AskGmatContext';
+import { useCustomPrompt } from '../context/CustomPromptContext';
 
 const DailyPractice: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +24,20 @@ const DailyPractice: React.FC = () => {
   const [canPractice, setCanPractice] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null); // error specifically for submit
   const [autoProgressLoaded, setAutoProgressLoaded] = useState(false);
+  const { submit: submitCustomPrompt } = useCustomPrompt();
+
+  const buildAskPrompt = (qText: string, options: { id: string; text: string }[] | undefined, correct: string) => {
+    const lines: string[] = [
+      'Explain the reasoning for the correct answer to this GMAT question.',
+      `Question: ${qText}`,
+    ];
+    if (options && options.length > 0) {
+      const opts = options.map(o => `${o.id.toUpperCase()}. ${o.text}`).join(' ');
+      lines.push(`Options: ${opts}`);
+    }
+    lines.push(`Correct answer choice: ${String(correct).toUpperCase()}`);
+    return lines.join('\n');
+  };
 
   const isRetakeMode = new URLSearchParams(location.search).get('retake') === '1';
   const [isRetake, setIsRetake] = useState(isRetakeMode);
@@ -144,11 +160,27 @@ const DailyPractice: React.FC = () => {
         {result.feedback && (
           <div className="mt-3">
             <h3>Results:</h3>
-            {result.feedback.map((fb: any, idx: number) => (
-              <div key={fb.questionId} className={`alert ${fb.correct ? 'alert-success' : 'alert-danger'}`}>
-                <strong>Q{idx + 1}:</strong> {fb.correct ? 'Correct!' : `Wrong. Correct answer: ${fb.correctAnswer}`}
-              </div>
-            ))}
+            {result.feedback.map((fb: any, idx: number) => {
+              const q = questions.find((x) => String(x.id) === String(fb.questionId));
+              return (
+                <div key={fb.questionId} className={`alert ${fb.correct ? 'alert-success' : 'alert-danger'}`}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span>
+                      <strong>Q{idx + 1}:</strong> {fb.correct ? 'Correct!' : `Wrong. Correct answer: ${fb.correctAnswer}`}
+                    </span>
+                    {!fb.correct && q && (
+                      <button
+                        className="btn"
+                        onClick={() => submitCustomPrompt(buildAskPrompt(q.question, q.options, fb.correctAnswer))}
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        Ask GMAT
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
         <div className="form-actions mt-3">

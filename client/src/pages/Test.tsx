@@ -5,6 +5,7 @@ import QuestionCard from '../components/QuestionCard';
 import Timer from '../components/Timer';
 import ResultSummary from '../components/ResultSummary';
 import EmotionFeedback from '../components/EmotionFeedback';
+import { useCustomPrompt } from '../context/CustomPromptContext';
 import { fetchDemoQuestions } from '../services/api';
 import './Test.css';
 
@@ -21,6 +22,7 @@ const Test: React.FC = () => {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [completed, setCompleted] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { submit: submitCustomPrompt } = useCustomPrompt();
 
   const navigate = useNavigate();
 
@@ -69,6 +71,37 @@ const Test: React.FC = () => {
             />
             <EmotionFeedback correctAnswers={score} totalQuestions={totalQuestions} />
           </div>
+          {/* Wrong answers quick Ask GMAT */}
+          {questions.length > 0 && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h3 style={{ marginTop: 0 }}>Ask GMAT about missed questions</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {questions.filter(q => answers[q.id] && answers[q.id] !== q.answer).map((q) => (
+                  <div key={q.id} className="alert alert-danger" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span><strong>Q{q.id}:</strong> Wrong. Correct answer: {q.answer.toUpperCase()}</span>
+                      <button
+                        className="btn"
+                        onClick={() => {
+                          const opts = q.options.map(o => `${o.id.toUpperCase()}. ${o.text}`).join(' ');
+                          const prompt = [
+                            'Explain the reasoning for the correct answer to this GMAT question.',
+                            `Question: ${q.question}`,
+                            `Options: ${opts}`,
+                            `Correct answer choice: ${q.answer.toUpperCase()}`
+                          ].join('\n');
+                          submitCustomPrompt(prompt);
+                        }}
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        Ask GMAT
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="result-cta">
             <p><strong>Enjoyed the challenge?</strong> Create an account to unlock full-length GMAT practice, daily sets, and saved progress.</p>
             <div className="result-actions">

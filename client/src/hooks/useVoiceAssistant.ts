@@ -165,7 +165,7 @@ export function useVoiceAssistant(opts: UseVoiceAssistantOptions = {}) {
           if (statusCode === 429 || code === 'VOICE_DAILY_LIMIT') {
             countedAnswerIdsRef.current.add(answerId);
             setTranscript(prev => [...prev, { id: 'limit-'+Date.now().toString(36), role: 'assistant', text: 'You have reached today\'s max voice responses. Try again tomorrow.' }]);
-            setVoiceQuota(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : { remaining: 0, used: 10, limit: 10 });
+            setVoiceQuota(prev => prev ? { ...prev, remaining: 0, used: prev.limit } : { remaining: 0, used: 2, limit: 2 });
             if (process.env.NODE_ENV !== 'production') {
               console.debug('[voice][quota] limit reached (assistant answer)', { answerId });
             }

@@ -3,6 +3,9 @@ import './VoiceChatWidget.css';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
 import { useAuth } from '../context/AuthContext';
 import { askVoiceText } from '../services/api';
+// Removed AskGmatDialog prompt queue to simplify and avoid duplicate sends
+// import { useAskGmatDialog } from '../context/AskGmatContext';
+import { useCustomPrompt } from '../context/CustomPromptContext';
 
 interface VoiceChatWidgetProps { model?: string; voice?: string; onClose?: () => void }
 
@@ -34,6 +37,8 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
   useEffect(() => { statusRef.current = status; }, [status]);
 
   const combinedTranscript = mode === 'voice' ? transcript : chatTranscript;
+  const { prompt, setPrompt } = useCustomPrompt();
+  const lastHandledPromptIdRef = useRef<string | null>(null);
   const typingId = 'typing-indicator';
 
   // Preparing (10s) phase: run exactly once per transition into 'calling'.
@@ -94,23 +99,22 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
     }
   }, [mode, spinnerDone, start]);
 
-  const handleTextSend = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
+  const sendPrompt = async (text: string) => {
+    const clean = text.trim();
+    if (!clean || sending) return;
     if ((mode === 'voice' || mode === 'calling') && voiceQuota && voiceQuota.remaining <= 0) {
       setChatTranscript(prev => prev.concat({ id: 'quota-ro-'+Date.now().toString(36), role: 'assistant', text: 'Voice quota reached – session is read-only.' }));
       return;
     }
     setSending(true);
     const id = 'u-' + Date.now().toString(36);
-    setChatTranscript(prev => [...prev, { id, role: 'user', text }]);
-    setInput('');
+    setChatTranscript(prev => [...prev, { id, role: 'user', text: clean }]);
     try {
       // Add typing placeholder
       setChatTranscript(prev => [...prev, { id: typingId, role: 'assistant', text: 'Typing…' }]);
       let res;
       try {
-        res = await askVoiceText(text);
+        res = await askVoiceText(clean);
       } catch (err: any) {
         // If guest free limit reached (429) show friendly upgrade message
         const status = err?.response?.status;
@@ -133,6 +137,13 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
     } finally {
       setSending(false);
     }
+  };
+
+  const handleTextSend = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput('');
+    await sendPrompt(text);
   };
 
   const handleTalkClick = () => {
@@ -185,6 +196,22 @@ const VoiceChatWidget: React.FC<VoiceChatWidgetProps> = ({ model, voice, onClose
       setInput(c);
     }
   };
+
+  // AskGmatContext prompts removed
+
+  // Consume a single CustomPrompt (simpler global) when present
+  useEffect(() => {
+    if (!prompt || sending) return;
+    // Avoid duplicate handling in React StrictMode (effect may run twice)
+    if (lastHandledPromptIdRef.current === prompt.id) return;
+    lastHandledPromptIdRef.current = prompt.id;
+    if (mode === 'idle') setMode('text');
+    const text = prompt.text;
+    setPrompt(null);
+    setInput('');
+    void sendPrompt(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompt, sending]);
 
   return (
     <div className="vcw-container">
