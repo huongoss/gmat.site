@@ -21,7 +21,7 @@ export const SEO: React.FC<SEOProps> = ({
   openGraphImage
 }) => {
   const fullTitle = title ? `${title} | GMAT.site` : 'GMAT.site – Smart Daily GMAT Practice';
-  const ogImage = openGraphImage || `${SITE}/favicon.svg`;
+  const ogImage = openGraphImage || `${SITE}/favicon.jpg`;
   return (
     <Helmet>
       <title>{fullTitle}</title>

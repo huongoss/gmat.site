@@ -29,7 +29,7 @@ const BlogPost: React.FC = () => {
     datePublished: post.date,
     dateModified: post.date,
     author: { '@type': 'Organization', name: 'GMAT.site' },
-    publisher: { '@type': 'Organization', name: 'GMAT.site', logo: { '@type': 'ImageObject', url: 'https://gmat.site/favicon.svg' } },
+    publisher: { '@type': 'Organization', name: 'GMAT.site', logo: { '@type': 'ImageObject', url: 'https://gmat.site/favicon.jpg' } },
     description: post.excerpt,
     mainEntityOfPage: url,
     url

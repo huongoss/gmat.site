@@ -52,13 +52,34 @@
 
   <url>
     <loc>https://gmat.site/blog</loc>
-    <lastmod>2025-10-04</lastmod>
+    <lastmod>2025-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
 
   <url>
+    <loc>https://gmat.site/blog/deep-dive-gmat-verbal-reasoning</loc>
+    <lastmod>2025-10-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/blog/master-the-gmat-strategic-guide-to-reasoning</loc>
+    <lastmod>2025-10-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
     <loc>https://gmat.site/blog/build-effective-gmat-daily-routine</loc>
+    <lastmod>2025-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://gmat.site/blog/enjoy-the-process-consistent-gmat-growth</loc>
     <lastmod>2025-10-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
