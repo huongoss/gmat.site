@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { OCTOBER_PROMO } from '../constants/promo';
+import { NOVEMBER_PROMO } from '../constants/promo';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, createBillingPortalSession, getPricing } from '../services/api';
 import './Pricing.css';
@@ -35,12 +35,12 @@ const Pricing: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const promo = params.get('promo');
-    if (promo && promo.toUpperCase() === OCTOBER_PROMO.code) {
-      setPromoCode(OCTOBER_PROMO.code);
+    if (promo && promo.toUpperCase() === NOVEMBER_PROMO.code) {
+      setPromoCode(NOVEMBER_PROMO.code);
       // Copy once if not already copied in this session
-      if (!sessionStorage.getItem('promo_copied_oct90')) {
-        navigator.clipboard.writeText(OCTOBER_PROMO.code).then(() => {
-          sessionStorage.setItem('promo_copied_oct90', '1');
+      if (!sessionStorage.getItem('promo_copied_nov90')) {
+        navigator.clipboard.writeText(NOVEMBER_PROMO.code).then(() => {
+          sessionStorage.setItem('promo_copied_nov90', '1');
         }).catch(() => {/* ignore */});
       }
     }
@@ -48,7 +48,7 @@ const Pricing: React.FC = () => {
 
   const discountedFormatted = (() => {
     if (!promoCode || !price) return null;
-    const discounted = price.amount * (1 - OCTOBER_PROMO.discountPercent / 100);
+    const discounted = price.amount * (1 - NOVEMBER_PROMO.discountPercent / 100);
     return new Intl.NumberFormat(undefined, { style: 'currency', currency: price.currency.toUpperCase() }).format(discounted / 100);
   })();
 
@@ -131,7 +131,7 @@ const Pricing: React.FC = () => {
 
       {promoCode && !priceError && (
         <div className="alert alert-success mt-3" role="status">
-          Promo code <strong>{promoCode}</strong> detected: {OCTOBER_PROMO.discountPercent}% off first month. Code copied to clipboard.
+          Promo code <strong>{promoCode}</strong> detected: {NOVEMBER_PROMO.discountPercent}% off first month. Code copied to clipboard.
         </div>
       )}
 

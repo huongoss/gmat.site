@@ -1,4 +1,4 @@
-// October promotion configuration (self-contained). Remove this file to disable.
+// November promotion configuration (self-contained). Remove this file to disable.
 export interface Promotion {
   code: string;
   discountPercent: number; // 0-100
@@ -10,13 +10,13 @@ export interface Promotion {
   highlightColor?: string;
 }
 
-export const OCTOBER_PROMO: Promotion = {
-  code: 'OCT90',
+export const NOVEMBER_PROMO: Promotion = {
+  code: 'NOV90',
   discountPercent: 90,
-  expiresAt: '2025-10-31T23:59:59Z',
-  displayUntil: '2025-10-31T23:59:59Z',
-  heading: 'October Flash: 90% OFF First Month',
-  subheading: 'Use code OCT90 at checkout. Limited time this October only.',
+  expiresAt: '2025-11-30T23:59:59Z',
+  displayUntil: '2025-11-30T23:59:59Z',
+  heading: 'November Flash: 90% OFF First Month',
+  subheading: 'Use code NOV90 at checkout. Limited time this November only.',
   ctaLabel: 'Copy Code & Subscribe',
   highlightColor: '#ff6b00'
 };

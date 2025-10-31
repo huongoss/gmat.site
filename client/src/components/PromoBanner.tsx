@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OCTOBER_PROMO, isPromoActive } from '../constants/promo';
+import { NOVEMBER_PROMO, isPromoActive } from '../constants/promo';
 import { trackEvent } from '../utils/analytics';
 
 const PromoBanner: React.FC = () => {
-  const promo = OCTOBER_PROMO;
+  const promo = NOVEMBER_PROMO;
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [dismissed, setDismissed] = useState<boolean>(() => {
-    const k = localStorage.getItem('promo_dismiss_oct90');
+    const k = localStorage.getItem('promo_dismiss_nov90');
     return k === '1';
   });
 
@@ -29,7 +29,7 @@ const PromoBanner: React.FC = () => {
 
   const onDismiss = () => {
     setDismissed(true);
-    localStorage.setItem('promo_dismiss_oct90', '1');
+    localStorage.setItem('promo_dismiss_nov90', '1');
     trackEvent('promo_dismiss', { code: promo.code });
   };
 
