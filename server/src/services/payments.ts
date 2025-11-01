@@ -20,17 +20,20 @@ function isSubscriptionActiveStripe(status: string): boolean {
 async function getNextBillDate(params: { customerId: string; subscriptionId: string }): Promise<Date | undefined> {
   const { customerId, subscriptionId } = params;
   try {
-    // Feature-detect retrieveUpcoming (may not exist in installed stripe version)
-    const invoicesAny: any = stripe.invoices as any;
-    if (typeof invoicesAny.retrieveUpcoming === 'function') {
-      const upcoming = await invoicesAny.retrieveUpcoming({ customer: customerId, subscription: subscriptionId });
-      const ts = (upcoming as any)?.next_payment_attempt || (upcoming as any)?.due_date || (upcoming as any)?.created;
+    // Try to retrieve upcoming invoice for next payment date
+    const upcoming = await stripe.invoices.list({ 
+      customer: customerId, 
+      subscription: subscriptionId,
+      limit: 1,
+      status: 'draft'
+    });
+    const upcomingInvoice = upcoming.data[0];
+    if (upcomingInvoice) {
+      const ts = upcomingInvoice?.next_payment_attempt || upcomingInvoice?.due_date || upcomingInvoice?.created;
       if (ts && ts > 0) return new Date(ts * 1000);
       // Some invoices may instead have lines period end we can inspect
-      const periodEnd = (upcoming.lines?.data?.[0] as any)?.period?.end;
+      const periodEnd = upcomingInvoice.lines?.data?.[0]?.period?.end;
       if (periodEnd && periodEnd > 0) return new Date(periodEnd * 1000);
-    } else {
-      console.warn('[getNextBillDate] retrieveUpcoming not supported by current stripe library version');
     }
   } catch (e: any) {
     // Common reasons: no upcoming invoice (canceled, fully paid, trial ended) – silently fallback
@@ -320,12 +323,15 @@ export const fetchLiveSubscription = async (req: Request, res: Response) => {
     await user.save();
     console.log('[fetchLiveSubscription] subscription detail', { id: subscription.id, status, active: user.subscriptionActive, periodEnd: rawEnd, customerId });
 
+    const periodEndDate = (user as any).subscriptionCurrentPeriodEnd;
+    const validPeriodEnd = periodEndDate && new Date(periodEndDate).getFullYear() > 1970 ? periodEndDate : null;
+    
     return res.status(200).json({
       subscriptionActive: user.subscriptionActive,
       status,
       subscriptionId: subscription.id,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      nextBillDate: subscription.cancel_at_period_end ? null : ((user as any).subscriptionCurrentPeriodEnd || null)
+      nextBillDate: validPeriodEnd
     });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to fetch subscription' });
@@ -349,14 +355,17 @@ export const cancelSubscription = async (req: Request, res: Response) => {
 
     // Update DB with status and period end
     u.subscriptionActive = subscription.status === 'active' || subscription.status === 'trialing';
-    u.subscriptionCurrentPeriodEnd = new Date(((subscription as any).current_period_end || 0) * 1000);
+    const rawEnd = Number((subscription as any).current_period_end) || 0;
+    if (rawEnd > 0) {
+      u.subscriptionCurrentPeriodEnd = new Date(rawEnd * 1000);
+    }
     await u.save();
 
     return res.status(200).json({
       message: 'Subscription will cancel at period end.',
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      nextBillDate: subscription.cancel_at_period_end ? null : (u.subscriptionCurrentPeriodEnd || null),
+      nextBillDate: (rawEnd > 0 && u.subscriptionCurrentPeriodEnd) ? u.subscriptionCurrentPeriodEnd : null,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message ?? 'Failed to cancel subscription' });
