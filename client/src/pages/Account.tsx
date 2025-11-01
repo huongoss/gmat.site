@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { createBillingPortalSession, createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription } from '../services/api';
+import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription } from '../services/api';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -13,6 +13,8 @@ const Account: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [resendingVerification, setResendingVerification] = useState(false);
     const [canceling, setCanceling] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [subscriptionDetails, setSubscriptionDetails] = useState<{ cancelAtPeriodEnd?: boolean; nextBillDate?: string } | null>(null);
 
     useEffect(() => {
         const status = params.get('status');
@@ -24,6 +26,13 @@ const Account: React.FC = () => {
                     setMessage('Finalizing subscription...');
                     await verifyCheckoutSession(sessionId);
                     await refreshProfile();
+                    // Fetch updated subscription details
+                    try {
+                        const subscriptionData = await fetchLiveSubscription();
+                        setSubscriptionDetails(subscriptionData);
+                    } catch (e) {
+                        // silent fail
+                    }
                     setMessage('Subscription updated successfully.');
                 } catch (e: any) {
                     setError(e?.response?.data?.error || e?.message || 'Failed to verify subscription');
@@ -38,7 +47,8 @@ const Account: React.FC = () => {
                 await refreshProfile();
                 // After profile, force live sync to Stripe to ensure correctness
                 try {
-                    await fetchLiveSubscription();
+                    const subscriptionData = await fetchLiveSubscription();
+                    setSubscriptionDetails(subscriptionData);
                     await refreshProfile();
                 } catch (e) {
                     // silent fail; user still sees last known status
@@ -84,27 +94,23 @@ const Account: React.FC = () => {
         }
     }, [user]);
 
-    const handleManage = useCallback(async () => {
-        if (!user?.stripeCustomerId) return setError('No active subscription to manage.');
-        setLoading(true);
-        setError(null);
-        try {
-            const { url } = await createBillingPortalSession({ returnUrl: window.location.origin + '/account' });
-            window.location.href = url;
-        } catch (e: any) {
-            setError(e?.response?.data?.error || e?.message || 'Failed to open billing portal');
-        } finally {
-            setLoading(false);
-        }
-    }, [user?.stripeCustomerId]);
+    const handleCancel = () => {
+        setShowCancelConfirm(true);
+    };
 
-    const handleCancel = useCallback(async () => {
+    const handleConfirmCancel = useCallback(async () => {
+        setShowCancelConfirm(false);
         setCanceling(true);
         setError(null);
         setMessage(null);
         try {
             const res = await cancelSubscription();
             setMessage(res.message || 'Subscription will cancel at period end.');
+            // Update subscription details with the cancel status
+            setSubscriptionDetails({
+                cancelAtPeriodEnd: res.cancelAtPeriodEnd,
+                nextBillDate: res.nextBillDate
+            });
             if (isAuthenticated) await refreshProfile();
         } catch (e: any) {
             setError(e?.response?.data?.error || e?.message || 'Failed to cancel subscription');
@@ -157,10 +163,13 @@ const Account: React.FC = () => {
                         )}
                     </div>
                     
-                    <p className="mt-2">Subscription: {user.subscriptionActive ? 'Active' : 'Inactive'}</p>
+                    <p className="mt-2">Subscription: {user.subscriptionActive ? (subscriptionDetails?.cancelAtPeriodEnd ? 'Canceled (Active until period end)' : 'Active') : 'Inactive'}</p>
                     {/* Next bill date display (alias of subscriptionCurrentPeriodEnd coming from server as nextBillDate) */}
-                    {user.subscriptionCurrentPeriodEnd && (
+                    {user.subscriptionCurrentPeriodEnd && !subscriptionDetails?.cancelAtPeriodEnd && (
                         <p className="mt-2">Next bill date: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                    )}
+                    {subscriptionDetails?.cancelAtPeriodEnd && user.subscriptionCurrentPeriodEnd && (
+                        <p className="mt-2">Access until: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                     )}
 
                     {!user.subscriptionActive && (
@@ -172,12 +181,11 @@ const Account: React.FC = () => {
                     )}
                     {user.subscriptionActive && (
                         <div className="form-actions">
-                            <button className="btn-outline" disabled={loading} onClick={handleManage}>
-                                {loading ? 'Opening…' : 'Manage subscription'}
-                            </button>
-                            <button className="btn" style={{ marginLeft: 8 }} disabled={canceling} onClick={handleCancel}>
-                                {canceling ? 'Canceling…' : 'Cancel subscription'}
-                            </button>
+                            {!subscriptionDetails?.cancelAtPeriodEnd && (
+                                <button className="btn" disabled={canceling} onClick={handleCancel}>
+                                    {canceling ? 'Canceling…' : 'Cancel subscription'}
+                                </button>
+                            )}
                         </div>
                     )}
                     <div className="form-actions">
@@ -187,6 +195,60 @@ const Account: React.FC = () => {
             ) : (
                 <div>
                     <h2>Loading profile…</h2>
+                </div>
+            )}
+            
+            {/* Cancel Confirmation Dialog */}
+            {showCancelConfirm && (
+                <div 
+                    className="modal-overlay" 
+                    onClick={() => setShowCancelConfirm(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}
+                >
+                    <div 
+                        className="modal-content" 
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            backgroundColor: 'white',
+                            padding: '24px',
+                            borderRadius: '8px',
+                            maxWidth: '400px',
+                            width: '90%',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+                        }}
+                    >
+                        <h3 style={{ margin: '0 0 16px', fontSize: '1.25rem' }}>Cancel Subscription</h3>
+                        <p style={{ margin: '0 0 24px', lineHeight: '1.5', color: '#666' }}>
+                            Are you sure you want to cancel your subscription? You'll continue to have access until the end of your current billing period.
+                        </p>
+                        <div className="modal-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button 
+                                className="btn-outline" 
+                                onClick={() => setShowCancelConfirm(false)}
+                                disabled={canceling}
+                            >
+                                Keep Subscription
+                            </button>
+                            <button 
+                                className="btn" 
+                                onClick={handleConfirmCancel}
+                                disabled={canceling}
+                            >
+                                {canceling ? 'Canceling…' : 'Yes, Cancel'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

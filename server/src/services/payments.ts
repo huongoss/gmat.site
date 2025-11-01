@@ -324,7 +324,8 @@ export const fetchLiveSubscription = async (req: Request, res: Response) => {
       subscriptionActive: user.subscriptionActive,
       status,
       subscriptionId: subscription.id,
-      nextBillDate: (user as any).subscriptionCurrentPeriodEnd || null
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      nextBillDate: subscription.cancel_at_period_end ? null : ((user as any).subscriptionCurrentPeriodEnd || null)
     });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to fetch subscription' });
@@ -354,7 +355,8 @@ export const cancelSubscription = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: 'Subscription will cancel at period end.',
       status: subscription.status,
-      nextBillDate: u.subscriptionCurrentPeriodEnd || null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      nextBillDate: subscription.cancel_at_period_end ? null : (u.subscriptionCurrentPeriodEnd || null),
     });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message ?? 'Failed to cancel subscription' });

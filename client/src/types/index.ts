@@ -3,6 +3,8 @@ export interface User {
     username: string;
     email: string;
     subscriptionActive: boolean;
+    subscriptionCurrentPeriodEnd?: string;
+    cancelAtPeriodEnd?: boolean;
     practiceResults: Result[];
 }
 
