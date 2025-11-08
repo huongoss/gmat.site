@@ -9,7 +9,8 @@ const Register: React.FC = () => {
   const { register } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +37,18 @@ const Register: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
     try {
       let recaptchaToken: string | undefined;
       try { recaptchaToken = await getRecaptchaToken('register'); } catch (e) { /* ignore token errors in dev */ }
-  await register(email, password, username || undefined, recaptchaToken);
+  await register(email, password, name || undefined, recaptchaToken);
     setSuccess('✅ Account created! Check your email to verify and unlock your first adaptive quiz.');
     // Show verify prompt immediately
     setShowVerifyPrompt(true);
@@ -105,16 +114,39 @@ const Register: React.FC = () => {
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input 
+              id="password" 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              minLength={8}
+              required 
+            />
           </div>
           <div className="form-group">
-            <label htmlFor="username">Name (optional)</label>
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <input 
+              id="confirmPassword" 
+              type="password" 
+              value={confirmPassword} 
+              onChange={(e) => setConfirmPassword(e.target.value)} 
+              minLength={8}
+              required 
+            />
+            {confirmPassword && password !== confirmPassword && (
+              <small style={{ color: '#d32f2f', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>
+                Passwords do not match
+              </small>
+            )}
+          </div>
+          <div className="form-group">
+            <label htmlFor="name">Name (optional)</label>
             <input
-              id="username"
+              id="name"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your name (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
             />
           </div>
           <HumanCheck action="register" showLegal={true} />

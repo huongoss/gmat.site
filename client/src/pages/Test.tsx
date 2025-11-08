@@ -142,11 +142,16 @@ const Test: React.FC = () => {
     const elapsedSec = Math.max(1, Math.round((Date.now() - started) / 1000));
     if (!answers[qid]) setPerTimes(prev => ({ ...prev, [qid]: elapsedSec }));
     setAnswers(prev => ({ ...prev, [qid]: optionId }));
+    // No longer auto-advance - user must click Next button
+  };
+
+  const onNext = () => {
     if (current < totalQuestions - 1) {
       setCurrent(i => i + 1);
       setQStartAt(Date.now());
     } else if (!isDailyMode) {
-      // Trial auto-completes
+      // Trial auto-completes on last question's Next
+      window.scrollTo(0, 0); // Scroll to top when showing trial results
       setCompleted(true);
     }
   };
@@ -159,7 +164,10 @@ const Test: React.FC = () => {
       const elapsedSec = Math.max(1, Math.round((Date.now() - started) / 1000));
       setPerTimes(prev => ({ ...prev, [qid]: elapsedSec }));
     }
-    if (!isDailyMode) setCompleted(true); // trial ends immediately
+    if (!isDailyMode) {
+      window.scrollTo(0, 0); // Scroll to top when time expires
+      setCompleted(true); // trial ends immediately
+    }
   };
 
   const allAnswered = useMemo(() => questions.every(q => answers[q.id]), [questions, answers]);
@@ -174,6 +182,7 @@ const Test: React.FC = () => {
   const submitDaily = async () => {
     if (!isDailyMode || dailySubmitting || dailyResult) return;
     if (!allAnswered && !timeUp) return; // require completion unless timeUp
+    window.scrollTo(0, 0); // Scroll to top when showing results
     try {
       setDailySubmitting(true);
       // Fill blanks if timeUp
@@ -219,6 +228,7 @@ const Test: React.FC = () => {
     // Allow trial always; allow daily only if canPractice not explicitly false
     // If daily exhausted and no cache, abort
     if (isDailyMode && dailyInfo && dailyInfo.canPractice === false && !forcedRetake && questions.length === 0) return;
+    window.scrollTo(0, 0); // Scroll to top when retaking
     const now = Date.now();
     setCurrent(0);
     setAnswers({});
@@ -235,7 +245,10 @@ const Test: React.FC = () => {
     }
   };
 
-  const handleReview = () => navigate('/review');
+  const handleReview = () => {
+    window.scrollTo(0, 0); // Scroll to top before navigation
+    navigate('/review');
+  };
 
   if (completed) {
     const totalTime = Object.values(perTimes).reduce((a, b) => a + (b || 0), 0);
@@ -341,13 +354,13 @@ const Test: React.FC = () => {
               {!isDailyMode ? (
                 <>
                   <button className="btn" onClick={handleRetake}>Retake Trial</button>
-                  <button className="btn-accent" onClick={() => navigate('/register')}>Register for $10/month</button>
-                  <button className="btn-outline" onClick={() => navigate('/pricing')}>View Plans</button>
+                  <button className="btn-accent" onClick={() => { window.scrollTo(0, 0); navigate('/register'); }}>Register for free</button>
+                  <button className="btn-outline" onClick={() => { window.scrollTo(0, 0); navigate('/pricing'); }}>View Plans</button>
                 </>
               ) : (
                 <>
-                  <button className="btn" onClick={() => navigate('/review')} disabled={!isAuthenticated}>Review Past Sets</button>
-                  <button className="btn-outline" onClick={() => navigate('/account')}>Account</button>
+                  <button className="btn" onClick={() => { window.scrollTo(0, 0); navigate('/review'); }} disabled={!isAuthenticated}>Review Past Sets</button>
+                  <button className="btn-outline" onClick={() => { window.scrollTo(0, 0); navigate('/account'); }}>Account</button>
                   <button className="btn" disabled style={{ opacity:.6, cursor:'not-allowed' }}>Come Back Tomorrow</button>
                 </>
               )}
@@ -369,7 +382,7 @@ const Test: React.FC = () => {
           {!isDailyMode && !isAuthenticated && (
             <div className="alert alert-info trial-banner">
               This is a free 2-question trial. Your progress isn't saved.{" "}
-              <button className="btn-inline" onClick={() => navigate('/register')}>Create an account</button> to unlock full practice & saved results.
+              <button className="btn-inline" onClick={() => { window.scrollTo(0, 0); navigate('/register'); }}>Create an account</button> to unlock full practice & saved results.
             </div>
           )}
         </div>
@@ -382,8 +395,8 @@ const Test: React.FC = () => {
               </div>
             )}
             <div className="form-actions" style={{ marginTop: 12 }}>
-              <button className="btn" onClick={() => navigate('/review')}>Review Past Sets</button>
-              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')}>Compare Plans</button>
+              <button className="btn" onClick={() => { window.scrollTo(0, 0); navigate('/review'); }}>Review Past Sets</button>
+              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => { window.scrollTo(0, 0); navigate('/pricing'); }}>Compare Plans</button>
             </div>
           </div>
         )}
@@ -392,7 +405,7 @@ const Test: React.FC = () => {
             No questions loaded right now. Please try again shortly.
             <div className="form-actions" style={{ marginTop: 12 }}>
               <button className="btn" onClick={handleRetake}>Reload</button>
-              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate(isDailyMode ? '/pricing' : '/test')}>{isDailyMode ? 'View Plans' : 'Try Trial'}</button>
+              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => { window.scrollTo(0, 0); navigate(isDailyMode ? '/pricing' : '/test'); }}>{isDailyMode ? 'View Plans' : 'Try Trial'}</button>
             </div>
           </div>
         )}
@@ -415,19 +428,42 @@ const Test: React.FC = () => {
             </div>
           </div>
         )}
-        {isDailyMode && !completed && canPracticeEffective && (
+        {/* Next button for trial mode or individual question navigation in daily */}
+        {!completed && q && canPracticeEffective && !isDailyMode && (
           <div className="form-actions" style={{ marginTop: 16 }}>
             <button
               className="btn"
-              disabled={(!allAnswered && !timeUp) || dailySubmitting}
-              onClick={submitDaily}
+              disabled={!answers[q.id]}
+              onClick={onNext}
             >
-              {dailySubmitting
-                ? 'Submitting…'
-                : (allAnswered || timeUp
-                    ? ('Submit')
-                    : `Answer all (${Object.keys(answers).length}/${totalQuestions})`)}
+              {current < totalQuestions - 1 ? 'Next Question' : 'Submit'}
             </button>
+          </div>
+        )}
+        {/* Next/Submit for daily mode */}
+        {isDailyMode && !completed && canPracticeEffective && (
+          <div className="form-actions" style={{ marginTop: 16 }}>
+            {current < totalQuestions - 1 ? (
+              <button
+                className="btn"
+                disabled={!answers[q?.id || '']}
+                onClick={onNext}
+              >
+                Next Question
+              </button>
+            ) : (
+              <button
+                className="btn"
+                disabled={(!allAnswered && !timeUp) || dailySubmitting}
+                onClick={submitDaily}
+              >
+                {dailySubmitting
+                  ? 'Submitting…'
+                  : (allAnswered || timeUp
+                      ? 'Submit'
+                      : `Progress(${Object.keys(answers).length}/${totalQuestions})`)}
+              </button>
+            )}
           </div>
         )}
       </div>

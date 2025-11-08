@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 interface IUser extends Document {
     username?: string;
+    name?: string; // Display name (non-unique)
     email: string;
     password: string;
     emailVerified: boolean;
@@ -34,6 +35,7 @@ interface IUser extends Document {
 
 const UserSchema: Schema = new Schema({
     username: { type: String, required: false, unique: true, sparse: true },
+    name: { type: String, required: false }, // Display name (non-unique)
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true },
     emailVerified: { type: Boolean, default: false },

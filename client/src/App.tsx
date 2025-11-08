@@ -23,6 +23,7 @@ import { RequireAuth, GuestOnly } from './router/guards';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import VoiceFloatingLauncher from './components/VoiceFloatingLauncher';
+import ScrollToTop from './components/ScrollToTop';
 // Analytics handled by static gtag snippet in index.html
 import './styles/index.css';
 import { HelmetProvider } from 'react-helmet-async';
@@ -31,6 +32,7 @@ const App: React.FC = () => {
     return (
         <HelmetProvider>
             <Router>
+                <ScrollToTop />
                 <div className="app-container">
                     <Navbar />
                     <Routes>

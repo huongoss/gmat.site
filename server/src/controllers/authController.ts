@@ -20,7 +20,7 @@ const extractEncryptedPassword = (body: any): string => {
 };
 
 const register = async (req: Request, res: Response) => {
-    let { email, username } = req.body as { email: string; username?: string };
+    let { email, name } = req.body as { email: string; name?: string };
     if (email) email = email.trim().toLowerCase();
 
     try {
@@ -47,7 +47,7 @@ const register = async (req: Request, res: Response) => {
 
         const newUser = new User({ 
             email, 
-            username, 
+            name, 
             password: hashedPassword,
             emailVerificationToken: verificationToken,
             emailVerificationExpires: verificationExpires,
@@ -67,7 +67,8 @@ const register = async (req: Request, res: Response) => {
         const user = { 
             _id: newUser._id, 
             email: newUser.email, 
-            username: newUser.username, 
+            username: newUser.username,
+            name: newUser.name,
             subscriptionActive: newUser.subscriptionActive,
             emailVerified: newUser.emailVerified,
             admin: newUser.admin
@@ -128,7 +129,8 @@ const login = async (req: Request, res: Response) => {
         const payload = { 
             _id: user._id, 
             email: user.email, 
-            username: user.username, 
+            username: user.username,
+            name: user.name,
             subscriptionActive: user.subscriptionActive, 
             stripeCustomerId: user.stripeCustomerId, 
             subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
@@ -273,7 +275,8 @@ const getUserProfile = async (req: Request, res: Response) => {
         const payload = { 
             _id: user._id, 
             email: user.email, 
-            username: user.username, 
+            username: user.username,
+            name: user.name,
             subscriptionActive: user.subscriptionActive, 
             stripeCustomerId: user.stripeCustomerId, 
             subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
@@ -286,10 +289,49 @@ const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
+const updateName = async (req: Request, res: Response) => {
+    try {
+        const { name } = req.body as { name: string };
+        
+        if (!name || name.trim().length === 0) {
+            return res.status(400).json({ message: 'Name cannot be empty' });
+        }
+
+        const trimmedName = name.trim();
+        if (trimmedName.length > 50) {
+            return res.status(400).json({ message: 'Name too long (max 50 characters)' });
+        }
+
+        const user = await User.findById((req.user as any).id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.name = trimmedName;
+        await user.save();
+
+        const payload = { 
+            _id: user._id, 
+            email: user.email, 
+            username: user.username,
+            name: user.name,
+            subscriptionActive: user.subscriptionActive, 
+            stripeCustomerId: user.stripeCustomerId, 
+            subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
+            emailVerified: user.emailVerified,
+            admin: user.admin
+        };
+        res.status(200).json({ message: 'Name updated successfully', user: payload });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating name', error });
+    }
+};
+
 export { 
     register, 
     login, 
     getUserProfile, 
+    updateName,
     verifyEmail, 
     resendVerificationEmail,
     requestPasswordReset,

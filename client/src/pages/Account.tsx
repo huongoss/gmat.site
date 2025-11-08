@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription } from '../services/api';
+import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription, updateName } from '../services/api';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -18,6 +18,11 @@ const Account: React.FC = () => {
     const [showPostSignupVerify, setShowPostSignupVerify] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
     const hasLoadedSubscription = useRef(false);
+
+    // Name editing state
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editedName, setEditedName] = useState('');
+    const [savingName, setSavingName] = useState(false);
 
     useEffect(() => {
         // If user just verified from VerifyEmail page, ensure profile refresh on arrival
@@ -152,6 +157,40 @@ const Account: React.FC = () => {
         }
     };
 
+    const handleEditUsername = () => {
+        setEditedName(user?.name || '');
+        setIsEditingName(true);
+        setError(null);
+        setMessage(null);
+    };
+
+    const handleCancelEditUsername = () => {
+        setIsEditingName(false);
+        setEditedName('');
+    };
+
+    const handleSaveUsername = async () => {
+        if (!editedName.trim()) {
+            setError('Name cannot be empty');
+            return;
+        }
+
+        setSavingName(true);
+        setError(null);
+        setMessage(null);
+
+        try {
+            await updateName(editedName.trim());
+            await refreshProfile();
+            setMessage('Name updated successfully!');
+            setIsEditingName(false);
+        } catch (e: any) {
+            setError(e?.response?.data?.message || e?.message || 'Failed to update name');
+        } finally {
+            setSavingName(false);
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="card auth-card">
@@ -172,7 +211,66 @@ const Account: React.FC = () => {
 
             {user ? (
                 <div>
-                    <h2>Welcome, {user.username || 'there'}!</h2>
+                    {/* Name with edit functionality */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        {!isEditingName ? (
+                            <>
+                                <h2 style={{ margin: 0 }}>Welcome, {user.name || user.username || 'there'}!</h2>
+                                <button
+                                    onClick={handleEditUsername}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontSize: '1.2rem',
+                                        padding: '4px 8px',
+                                        color: '#666',
+                                        transition: 'color 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#333'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+                                    title="Edit name"
+                                    aria-label="Edit name"
+                                >
+                                    ✏️
+                                </button>
+                            </>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <input
+                                    type="text"
+                                    value={editedName}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    placeholder="Enter your name"
+                                    style={{
+                                        padding: '8px 12px',
+                                        fontSize: '1rem',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        minWidth: '200px'
+                                    }}
+                                    disabled={savingName}
+                                    autoFocus
+                                />
+                                <button
+                                    className="btn"
+                                    onClick={handleSaveUsername}
+                                    disabled={savingName || !editedName.trim()}
+                                    style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                                >
+                                    {savingName ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                    className="btn-outline"
+                                    onClick={handleCancelEditUsername}
+                                    disabled={savingName}
+                                    style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <p className="mt-2">Email: {user.email}</p>
                     
                     {/* Email verification status */}

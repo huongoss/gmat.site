@@ -7,7 +7,7 @@ interface AuthContextType {
     token?: string;
     login: (email: string, password: string, recaptchaToken?: string) => Promise<void>;
     logout: () => void;
-    register: (email: string, password: string, username?: string, recaptchaToken?: string) => Promise<void>;
+    register: (email: string, password: string, name?: string, recaptchaToken?: string) => Promise<void>;
     isAuthenticated: boolean;
     refreshProfile: () => Promise<void>;
     authLoading: boolean;
@@ -108,9 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearAuth();
     };
 
-    const register = async (email: string, password: string, username?: string, recaptchaToken?: string) => {
+    const register = async (email: string, password: string, name?: string, recaptchaToken?: string) => {
         // Call register endpoint (returns 201 Created with token + user)
-        const reg = await registerUser({ email, password, username, recaptchaToken });
+        const reg = await registerUser({ email, password, name, recaptchaToken });
         // Some earlier versions ignored the returned token and performed an immediate login.
         // That caused an apparent "failure" after a 201 success when the reused reCAPTCHA token
         // was rejected on the /auth/login endpoint. We now trust the 201 response.

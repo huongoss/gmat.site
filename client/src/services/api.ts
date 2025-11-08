@@ -37,10 +37,15 @@ export const getProfile = async () => {
     return res.data;
 };
 
-export const registerUser = async (userData: { email: string; password: string; username?: string; recaptchaToken?: string }) => {
+export const updateName = async (name: string) => {
+    const res = await api.patch('/auth/name', { name });
+    return res.data;
+};
+
+export const registerUser = async (userData: { email: string; password: string; name?: string; recaptchaToken?: string }) => {
     const passwordEnc = await encryptPassword(userData.password);
     const headers = userData.recaptchaToken ? { 'x-recaptcha-token': userData.recaptchaToken } : undefined;
-    const response = await api.post('/auth/register', { email: userData.email, username: userData.username, passwordEnc }, { headers });
+    const response = await api.post('/auth/register', { email: userData.email, name: userData.name, passwordEnc }, { headers });
     return response.data;
 };
 
@@ -129,6 +134,16 @@ export const verifyEmail = async (token: string) => {
 // Admin endpoints
 export const adminSendEmail = async (payload: { to?: string; subject: string; html?: string; text?: string }) => {
     const res = await api.post('/admin/email', payload);
+    return res.data;
+};
+
+export const adminGetAllUsers = async () => {
+    const res = await api.get('/admin/users');
+    return res.data;
+};
+
+export const adminDeleteUser = async (userId: string) => {
+    const res = await api.delete(`/admin/users/${userId}`);
     return res.data;
 };
 

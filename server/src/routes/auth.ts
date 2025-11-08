@@ -3,6 +3,7 @@ import {
 	register, 
 	login, 
 	getUserProfile, 
+	updateName,
 	requestPasswordReset, 
 	resetPassword, 
 	verifyEmail, 
@@ -28,6 +29,9 @@ router.get('/public-key', (_req, res) => {
 
 // Route for getting user profile
 router.get('/me', requireAuth, getUserProfile);
+
+// Route for updating name (display name)
+router.patch('/name', requireAuth, updateName);
 
 // Password reset routes
 router.post('/forgot-password', requestPasswordReset);
