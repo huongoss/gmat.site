@@ -19,23 +19,38 @@ const Home: React.FC = () => {
       <PromoBanner />
       {/* Hero Section */}
   <section className="hero section-base" aria-labelledby="hero-heading">
-        <div className="hero-bg" style={{ backgroundImage: `url(${bgUrl})` }} aria-hidden="true" />
+  <div className="hero-bg" style={{ backgroundImage: `url(${bgUrl})` }} aria-hidden="true" />
         <div className="hero-inner">
-          <h1 id="hero-heading" className="hero-title">Smarter GMAT Prep Powered by Learning Science</h1>
+          <h1 id="hero-heading" className="hero-title">Master GMAT Faster with Smart Daily Practice</h1>
           <p className="hero-sub">
-            “Research in learning science shows that consistent daily practice leads to measurable improvements in test performance. Our platform applies this principle to help you prepare effectively.”
+            Adaptive questions. Daily habit system. Personalized feedback. Free to start.
           </p>
           <div className="hero-actions">
-            <Link
-              to="/test"
+            <button
               className="btn-accent"
-              onClick={() => trackEvent('cta_click', { location: 'home_hero', cta: 'start_free_questions' })}
-            >Start Free Questions</Link>
+              onClick={() => {
+                trackEvent('cta_click', { location: 'home_hero', cta: 'start_free_practice_scroll' });
+                const el = document.getElementById('signup');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >Start Free Practice</button>
             <Link
               to="/register"
               className="btn-outline"
               onClick={() => trackEvent('cta_click', { location: 'home_hero', cta: 'register_now' })}
             >Create Account</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Signup Anchor Section */}
+      <section id="signup" className="section-base" aria-labelledby="signup-heading">
+        <div className="container" style={{ maxWidth: 720 }}>
+          <h2 id="signup-heading" style={{ marginBottom: 8 }}>Start free – it takes 30 seconds</h2>
+          <p className="muted" style={{ marginTop: 0 }}>Create your account to unlock your first GMAT micro‑set.</p>
+          <div className="form-actions" style={{ marginTop: 16 }}>
+            <Link to="/register" className="btn-accent">Create Free Account</Link>
+            <Link to="/test" className="btn-outline" style={{ marginLeft: 8 }}>See sample questions</Link>
           </div>
         </div>
       </section>

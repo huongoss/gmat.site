@@ -11,6 +11,8 @@ interface AuthContextType {
     isAuthenticated: boolean;
     refreshProfile: () => Promise<void>;
     authLoading: boolean;
+    justLoggedIn: boolean;
+    clearJustLoggedIn: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [token, setToken] = useState<string | undefined>(undefined);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authLoading, setAuthLoading] = useState<boolean>(true);
+    const [justLoggedIn, setJustLoggedIn] = useState<boolean>(false);
 
     useEffect(() => {
         (async () => {
@@ -79,10 +82,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setIsAuthenticated(false);
         setToken(undefined);
+        setJustLoggedIn(false);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         setAuthToken(undefined);
         setUserId(undefined);
+    };
+
+    const clearJustLoggedIn = () => {
+        setJustLoggedIn(false);
     };
 
     const login = async (email: string, password: string, recaptchaToken?: string) => {
@@ -91,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('token', token);
         setAuthToken(token);
         setIsAuthenticated(true); // optimistic
+        setJustLoggedIn(true);
         await refreshProfile(token);
         trackEvent('login', { method: 'password' });
     };
@@ -110,6 +119,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setToken(newToken);
             localStorage.setItem('token', newToken);
             setAuthToken(newToken);
+            setJustLoggedIn(true);
+            // No persistent flags needed; Account page will derive UI from emailVerified directly
             // Use returned user payload if present (may have minimal fields like emailVerified false)
             if (reg.user) {
                 setUser(reg.user);
@@ -129,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, register, isAuthenticated, refreshProfile, authLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, register, isAuthenticated, refreshProfile, authLoading, justLoggedIn, clearJustLoggedIn }}>
             {children}
         </AuthContext.Provider>
     );

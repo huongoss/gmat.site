@@ -54,7 +54,7 @@ const Pricing: React.FC = () => {
 
   const handleSubscribe = async () => {
     if (!isAuthenticated || !user?._id) return navigate('/login');
-    const { url } = await createCheckoutSession({ userId: user._id });
+    const { url } = await createCheckoutSession({ userId: user._id, promoCode: promoCode || undefined });
     window.location.href = url;
   };
 

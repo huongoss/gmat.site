@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import './Navbar.css';
 import useAuth from '../hooks/useAuth';
 
 const Navbar: React.FC = () => {
-    const { isAuthenticated, user } = useAuth() as any;
+    const { isAuthenticated, user, justLoggedIn, clearJustLoggedIn } = useAuth() as any;
+    
+    // Clear the justLoggedIn flag after animation completes
+    useEffect(() => {
+        if (justLoggedIn) {
+            const timer = setTimeout(() => {
+                clearJustLoggedIn();
+            }, 4500); // Animation runs for 1.5s * 3 iterations = 4.5s
+            return () => clearTimeout(timer);
+        }
+    }, [justLoggedIn, clearJustLoggedIn]);
     return (
         <nav className="navbar">
             <div className="container">
@@ -24,7 +34,14 @@ const Navbar: React.FC = () => {
                     {isAuthenticated ? (
                         <>
                             <li>
-                                <NavLink to="/daily" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Daily</NavLink>
+                                <NavLink 
+                                    to="/daily" 
+                                    className={({ isActive }) => 
+                                        `nav-link${isActive ? ' nav-link--active' : ''}${justLoggedIn ? ' nav-link--daily-highlight' : ''}`
+                                    }
+                                >
+                                    Daily
+                                </NavLink>
                             </li>
                             <li>
                                 <NavLink to="/review" className={({ isActive }) => `nav-link${isActive ? ' nav-link--active' : ''}`}>Review</NavLink>

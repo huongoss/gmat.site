@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../services/api';
+import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers, fetchDemoQuestions } from '../services/api';
 import { useLocation } from 'react-router-dom';
 import QuestionCard from '../components/QuestionCard';
 import { useAskGmatDialog } from '../context/AskGmatContext';
@@ -39,7 +39,10 @@ const DailyPractice: React.FC = () => {
     return lines.join('\n');
   };
 
-  const isRetakeMode = new URLSearchParams(location.search).get('retake') === '1';
+  const params = new URLSearchParams(location.search);
+  const isRetakeMode = params.get('retake') === '1';
+  const isIntroMode = params.get('intro') === '1';
+  const INTRO_LIMIT = 5; // number of questions to show in intro micro-set
   const [isRetake, setIsRetake] = useState(isRetakeMode);
   const [baseResultId, setBaseResultId] = useState<string | null>(null);
 
@@ -51,7 +54,21 @@ const DailyPractice: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        if (isRetakeMode) {
+        if (isIntroMode) {
+          // Intro micro-set: lightweight demo/adaptive sample. Use demo public questions for now.
+          const demo = await fetchDemoQuestions();
+          const slice = demo.slice(0, INTRO_LIMIT).map((q, idx) => ({
+            id: String(q.id),
+            question: q.question,
+            options: q.options,
+            sequenceNumber: idx + 1,
+          }));
+          setQuestions(slice as any);
+          setPlan('free');
+          setProgress(null);
+          setCanPractice(true);
+          setIsRetake(false);
+        } else if (isRetakeMode) {
           const data = await getRetakeDailyQuestions();
           setIsRetake(true);
           setBaseResultId(data.baseResultId);
@@ -119,7 +136,32 @@ const DailyPractice: React.FC = () => {
     try {
       setSubmitError(null);
       setSubmitting(true);
-      if (isRetake && baseResultId) {
+      if (isIntroMode) {
+        // Client-side scoring only for intro; answers are deterministic (demo file includes answer key)
+        // Re-fetch demo for answer key (could cache earlier but small cost)
+        const demo = await fetchDemoQuestions();
+        const slice = demo.slice(0, INTRO_LIMIT);
+        let correct = 0;
+        const feedback = slice.map((q, idx) => {
+          const userAnswer = answers[String(q.id)];
+          const isCorrect = String(userAnswer).toLowerCase() === String(q.answer).toLowerCase();
+          if (isCorrect) correct++;
+          return {
+            questionId: String(q.id),
+            correct: isCorrect,
+            correctAnswer: q.answer,
+          };
+        });
+        // Build lightweight result object
+        const scorePct = slice.length ? Math.round((correct / slice.length) * 100) : 0;
+        setResult({
+          totalQuestions: slice.length,
+          correctAnswers: correct,
+          score: scorePct,
+          feedback,
+          intro: true,
+        });
+      } else if (isRetake && baseResultId) {
         const submitResult = await submitRetakeDailyAnswers(baseResultId, answers);
         setResult({ ...submitResult, retake: true });
       } else {
@@ -153,10 +195,10 @@ const DailyPractice: React.FC = () => {
   if (submitted && result) {
     return (
       <div className="card content-narrow">
-        <h1 className="page-title">{isRetake ? 'Retake – Daily Set' : 'Daily practice'}</h1>
-        <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>
-        <p className="alert alert-success">{isRetake ? 'Retake completed' : 'Completed!'} Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%) {result.originalScore !== undefined && !isRetake && `(Original: ${result.originalScore}%)`}</p>
-        {!isRetake && result.progress !== undefined && (<p className="muted">Progress: {result.progress}/{result.totalInBank}</p>)}
+        <h1 className="page-title">{isIntroMode ? 'Intro Practice – Results' : (isRetake ? 'Retake – Daily Set' : 'Daily practice')}</h1>
+        {!isIntroMode && <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>}
+        <p className="alert alert-success">{isIntroMode ? 'Intro set complete!' : (isRetake ? 'Retake completed' : 'Completed!')} Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%) {result.originalScore !== undefined && !isRetake && !isIntroMode && `(Original: ${result.originalScore}%)`}</p>
+        {!isRetake && !isIntroMode && result.progress !== undefined && (<p className="muted">Progress: {result.progress}/{result.totalInBank}</p>)}
         {result.feedback && (
           <div className="mt-3">
             <h3>Results:</h3>
@@ -184,8 +226,17 @@ const DailyPractice: React.FC = () => {
           </div>
         )}
         <div className="form-actions mt-3">
-          <button className="btn" onClick={() => navigate('/review')}>Review</button>
-          <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')}>Compare plans</button>
+          {isIntroMode ? (
+            <>
+              <button className="btn" onClick={() => navigate('/daily')}>Do Full Daily Set</button>
+              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')}>Unlock 10 Daily Questions</button>
+            </>
+          ) : (
+            <>
+              <button className="btn" onClick={() => navigate('/review')}>Review</button>
+              <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')}>Compare plans</button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -194,10 +245,10 @@ const DailyPractice: React.FC = () => {
   return (
   <div className="card content-narrow">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h1 className="page-title">{isRetake ? 'Retake – Daily Set' : 'Daily practice'}</h1>
-        <span className="badge">{plan === 'pro' ? 'Monthly' : 'Free'}</span>
+        <h1 className="page-title">{isIntroMode ? 'Intro Practice' : (isRetake ? 'Retake – Daily Set' : 'Daily practice')}</h1>
+        {!isIntroMode && <span className="badge">{plan === 'pro' ? 'Monthly' : 'Free'}</span>}
       </div>
-      <p className="muted">{isRetake ? 'Repeat the same questions to improve your score.' : `You have ${total} question(s) today.`}</p>
+      <p className="muted">{isIntroMode ? `Quick sample: ${total} question(s). Get a feel for the platform.` : (isRetake ? 'Repeat the same questions to improve your score.' : `You have ${total} question(s) today.`)}</p>
       {progress && (
         <p className="muted">Progress: {progress.current}/{progress.total} ({progress.percentage}%)</p>
       )}
@@ -220,10 +271,10 @@ const DailyPractice: React.FC = () => {
 
       <div className="form-actions" style={{ marginTop: 24 }}>
         <button className="btn" disabled={numAnswered < total || submitting} onClick={onSubmit}>
-          {submitting ? 'Submitting…' : numAnswered < total ? `Answer all (${numAnswered}/${total})` : 'Submit'}
+          {submitting ? 'Submitting…' : numAnswered < total ? `Answer all (${numAnswered}/${total})` : (isIntroMode ? 'See Intro Results' : 'Submit')}
         </button>
-        {/* Hide upgrade button during retake; only show on original daily mode */}
-        {!isRetake && plan !== 'pro' && (
+        {/* Hide upgrade button during retake & intro; only show on original daily mode */}
+        {!isRetake && !isIntroMode && plan !== 'pro' && (
           <button className="btn-outline" style={{ marginLeft: 8 }} onClick={() => navigate('/pricing')} disabled={submitting}>
             Upgrade for 10/day questions
           </button>

@@ -67,7 +67,7 @@ export const fetchUserResults = async (userId: string) => {
 };
 
 // Payments / subscription helpers (backend endpoints must exist or return 501)
-export const createCheckoutSession = async (payload: { userId: string }) => {
+export const createCheckoutSession = async (payload: { userId?: string; promoCode?: string; successUrl?: string; cancelUrl?: string }) => {
     const res = await api.post('/payments/checkout-session', payload);
     return res.data;
 };

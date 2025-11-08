@@ -185,18 +185,37 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       if (!customer && u?.email) customer_email = u.email;
     }
 
+    // Optional explicit promo code (human readable) provided by client to pre-apply discount
+    const promoCodeRaw = (req.body?.promoCode as string | undefined)?.trim();
+    let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+    if (promoCodeRaw) {
+      try {
+        const promoList = await stripe.promotionCodes.list({ code: promoCodeRaw, active: true, limit: 1 });
+        const found = promoList.data[0];
+        if (found) {
+          discounts = [{ promotion_code: found.id }];
+          console.log('[createCheckoutSession] applied promotion code', { code: promoCodeRaw, promotionCodeId: found.id });
+        } else {
+          console.warn('[createCheckoutSession] promo code not found or inactive', { code: promoCodeRaw });
+        }
+      } catch (e: any) {
+        console.warn('[createCheckoutSession] promo code lookup failed', { code: promoCodeRaw, message: e?.message });
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: lineItems,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      allow_promotion_codes: true,
+      allow_promotion_codes: true, // always allow user to change/apply other valid codes
+      ...(discounts ? { discounts } : {}),
       ...(userId ? { client_reference_id: userId } : {}),
       ...(customer ? { customer } : {}),
       ...(customer_email ? { customer_email } : {}),
     });
 
-    return res.status(200).json({ url: session.url });
+    return res.status(200).json({ url: session.url, promoApplied: !!discounts, promoCode: promoCodeRaw || null });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message ?? 'Failed to create checkout session' });
   }

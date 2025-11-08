@@ -42,7 +42,7 @@ const ResultSummary: React.FC<ResultSummaryProps> = ({ score, totalQuestions, on
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn" onClick={onRetake} disabled={disableRetake}>Retake Test</button>
-                <button className="btn-outline" onClick={onReview} disabled={disableReview} title={disableReview ? 'Review not available' : undefined}>Review Answers</button>
+                {/* Review Answers button intentionally removed per product decision */}
             </div>
         </div>
     );

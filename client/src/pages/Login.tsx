@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { getRecaptchaToken } from '../utils/recaptcha';
 import HumanCheck from '../components/HumanCheck';
@@ -7,6 +7,9 @@ import HumanCheck from '../components/HumanCheck';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const next = params.get('next') || '/account';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,8 +22,8 @@ const Login: React.FC = () => {
     try {
       let recaptchaToken: string | undefined;
       try { recaptchaToken = await getRecaptchaToken('login'); } catch (e) { /* ignore dev */ }
-      await login(email, password, recaptchaToken);
-      navigate('/account');
+  await login(email, password, recaptchaToken);
+  navigate(next);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Login failed');
     } finally {

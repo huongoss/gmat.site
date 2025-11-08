@@ -222,6 +222,25 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
 }
+
+/* Fix cursor not showing on autofilled inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text) !important;
+  -webkit-box-shadow: 0 0 0 30px var(--color-surface) inset !important;
+  box-shadow: 0 0 0 30px var(--color-surface) inset !important;
+  caret-color: var(--color-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Ensure cursor is visible in all input states */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  caret-color: var(--color-text);
+}
 .field-hint { color: var(--color-text-muted); font-size: .9rem; }
 .form-actions { margin-top: var(--space-4); }
 .btn-block { display: inline-flex; justify-content: center; width: 100%; }

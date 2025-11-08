@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription } from '../services/api';
@@ -15,8 +15,20 @@ const Account: React.FC = () => {
     const [canceling, setCanceling] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [subscriptionDetails, setSubscriptionDetails] = useState<{ cancelAtPeriodEnd?: boolean; nextBillDate?: string } | null>(null);
+    const [showPostSignupVerify, setShowPostSignupVerify] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
+    const hasLoadedSubscription = useRef(false);
 
     useEffect(() => {
+        // If user just verified from VerifyEmail page, ensure profile refresh on arrival
+        const jv = localStorage.getItem('justVerifiedEmail');
+        if (isAuthenticated && jv) {
+            (async () => {
+                try { await refreshProfile(); } catch {}
+                try { localStorage.removeItem('justVerifiedEmail'); } catch {}
+            })();
+        }
+
         const status = params.get('status');
         const sessionId = params.get('session_id');
         if (status === 'cancel') setMessage('Checkout was canceled.');
@@ -39,17 +51,17 @@ const Account: React.FC = () => {
                 }
             })();
         }
-    }, [params, refreshProfile]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [params]);
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && !hasLoadedSubscription.current) {
+            hasLoadedSubscription.current = true;
             (async () => {
-                await refreshProfile();
                 // After profile, force live sync to Stripe to ensure correctness
                 try {
                     const subscriptionData = await fetchLiveSubscription();
                     setSubscriptionDetails(subscriptionData);
-                    await refreshProfile();
                 } catch (e) {
                     // silent fail; user still sees last known status
                 }
@@ -119,6 +131,27 @@ const Account: React.FC = () => {
         }
     }, [isAuthenticated, refreshProfile]);
 
+    useEffect(() => {
+        // Show verification prompt whenever user is logged in and not verified
+        if (isAuthenticated && user && user.email && !user.emailVerified) {
+            setShowPostSignupVerify(true);
+        }
+    }, [isAuthenticated, user]);
+
+    const handleModalResend = async () => {
+        if (!user?.email) return;
+        setResendLoading(true);
+        try {
+            const mod = await import('../services/api');
+            await mod.resendVerificationEmail(user.email);
+            alert('Verification email resent. Check your inbox (and spam).');
+        } catch (e: any) {
+            alert(e?.response?.data?.message || e?.message || 'Failed to resend.');
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="card auth-card">
@@ -139,7 +172,7 @@ const Account: React.FC = () => {
 
             {user ? (
                 <div>
-                    <h2>Welcome, {user.username || user.name || 'User'}!</h2>
+                    <h2>Welcome, {user.username || 'there'}!</h2>
                     <p className="mt-2">Email: {user.email}</p>
                     
                     {/* Email verification status */}
@@ -165,12 +198,22 @@ const Account: React.FC = () => {
                     
                     <p className="mt-2">Subscription: {user.subscriptionActive ? (subscriptionDetails?.cancelAtPeriodEnd ? 'Canceled (Active until period end)' : 'Active') : 'Inactive'}</p>
                     {/* Next bill date display (alias of subscriptionCurrentPeriodEnd coming from server as nextBillDate) */}
-                    {user.subscriptionCurrentPeriodEnd && !subscriptionDetails?.cancelAtPeriodEnd && (
+                    {user.subscriptionActive && user.subscriptionCurrentPeriodEnd && !subscriptionDetails?.cancelAtPeriodEnd && new Date(user.subscriptionCurrentPeriodEnd).getFullYear() > 1970 && (
                         <p className="mt-2">Next bill date: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                     )}
-                    {subscriptionDetails?.cancelAtPeriodEnd && user.subscriptionCurrentPeriodEnd && (
+                    {user.subscriptionActive && subscriptionDetails?.cancelAtPeriodEnd && user.subscriptionCurrentPeriodEnd && new Date(user.subscriptionCurrentPeriodEnd).getFullYear() > 1970 && (
                         <p className="mt-2">Access until: {new Date(user.subscriptionCurrentPeriodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                     )}
+
+                    {/* Start Practicing Button */}
+                    <div className="form-actions">
+                        <button 
+                            className="btn-accent" 
+                            onClick={() => navigate('/daily')}
+                        >
+                            🚀 Start Practicing
+                        </button>
+                    </div>
 
                     {!user.subscriptionActive && (
                         <div className="form-actions">
@@ -251,6 +294,32 @@ const Account: React.FC = () => {
                     </div>
                 </div>
             )}
+                        {/* Post-signup verification guidance modal */}
+                        {showPostSignupVerify && user && !user.emailVerified && (
+                                <div
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="verify-guide-title"
+                                    className="modal-overlay"
+                                    onClick={() => setShowPostSignupVerify(false)}
+                                    style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1400 }}
+                                >
+                                    <div
+                                        className="modal-content"
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{ background:'#fff', padding:'24px', borderRadius:12, width:'90%', maxWidth:460, boxShadow:'0 6px 24px rgba(0,0,0,.18)', position:'relative' }}
+                                    >
+                                        <h3 id="verify-guide-title" style={{ margin:'0 0 12px', fontSize:'1.3rem' }}>Verify your email</h3>
+                                        <p style={{ margin:'0 0 12px', fontSize:'.95rem', lineHeight:'1.45' }}>We sent a verification link to <strong>{user.email}</strong>. Please open your inbox and click the link to activate full access.</p>
+                                        <p style={{ margin:'0 0 16px', fontSize:'.8rem', color:'#64748b' }}>Tip: Check Promotions/Spam if it doesn't appear within a minute.</p>
+                                        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                                            <button className="btn-accent" style={{ flex:'1 1 auto', justifyContent:'center' }} onClick={handleModalResend} disabled={resendLoading}>{resendLoading ? 'Resending…' : 'Resend Email'}</button>
+                                            <button className="btn-outline" style={{ flex:'1 1 auto' }} onClick={() => setShowPostSignupVerify(false)}>Dismiss</button>
+                                        </div>
+                                        <button aria-label="Close" onClick={() => setShowPostSignupVerify(false)} style={{ position:'absolute', top:8, right:8, background:'transparent', border:'none', fontSize:'1.2rem', cursor:'pointer', color:'#64748b' }}>×</button>
+                                    </div>
+                                </div>
+                        )}
         </div>
     );
 };
