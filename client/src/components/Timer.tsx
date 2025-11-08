@@ -2,10 +2,14 @@ import React, { useEffect, useState } from 'react';
 
 const Timer: React.FC<{ duration: number; onTimeUp: () => void }> = ({ duration, onTimeUp }) => {
     const [timeLeft, setTimeLeft] = useState(duration);
+    const [fired, setFired] = useState(false);
 
     useEffect(() => {
         if (timeLeft <= 0) {
-            onTimeUp();
+            if (!fired) {
+                setFired(true);
+                onTimeUp();
+            }
             return;
         }
 
@@ -14,7 +18,13 @@ const Timer: React.FC<{ duration: number; onTimeUp: () => void }> = ({ duration,
         }, 1000);
 
         return () => clearInterval(timerId);
-    }, [timeLeft, onTimeUp]);
+    }, [timeLeft, onTimeUp, fired]);
+
+    // Reset timer when duration changes
+    useEffect(() => {
+        setTimeLeft(duration);
+        setFired(false);
+    }, [duration]);
 
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);

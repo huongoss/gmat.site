@@ -12,7 +12,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import Test from './pages/Test';
-import DailyPractice from './pages/DailyPractice';
 import Review from './pages/Review';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
@@ -48,9 +47,10 @@ const App: React.FC = () => {
                         <Route path="/forgot-password" element={<GuestOnly><ForgotPassword /></GuestOnly>} />
                         <Route path="/reset-password" element={<GuestOnly><ResetPassword /></GuestOnly>} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
-                        {/* Public trial route: no auth required for 10-question trial */}
+                        {/* Public trial route: two-question trial */}
                         <Route path="/test" element={<Test />} />
-                        <Route path="/daily" element={<RequireAuth><DailyPractice /></RequireAuth>} />
+                        {/* Daily now reuses Test page UX, with server-backed questions */}
+                        <Route path="/daily" element={<RequireAuth><Test /></RequireAuth>} />
                         <Route path="/review" element={<RequireAuth><Review /></RequireAuth>} />
                         <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
                         <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />

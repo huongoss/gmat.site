@@ -81,14 +81,9 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (!user.emailVerified) {
-            return res.status(403).json({
-                message: 'Email verification required before accessing daily practice.',
-                canPractice: false,
-                emailVerified: false
-            });
-        }
-        const isPro = !!user.subscriptionActive;
+        // Allow unverified users to attempt the first daily set; verification will be encouraged post-result.
+    // Admins receive pro entitlements (question count & bank size)
+    const isPro = !!(user.subscriptionActive || (user as any).admin);
         const maxDaily = isPro ? 10 : 2;
         const bankSize = isPro ? 1000 : 100;
         const todayKey = new Date().toDateString();
@@ -256,11 +251,9 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (!user.emailVerified) {
-            return res.status(403).json({ message: 'Email verification required before submitting daily practice.' });
-        }
-        const questionIds = Object.keys(answers);
-        const questionsPerDay = user.subscriptionActive ? 10 : 2;
+        // Allow unverified users to submit; client will prompt verification to unlock detailed review.
+    const questionIds = Object.keys(answers);
+    const isPro = !!(user.subscriptionActive || (user as any).admin);
 
         // Enforce answering only today's allocated questions
         if (!user.dailyQuestionIds || user.dailyQuestionIds.length === 0) {
@@ -301,40 +294,54 @@ export const submitDailyAnswers = async (req: Request, res: Response) => {
 
         const score = Math.round((correctAnswers / questions.length) * 100);
 
-        // Save result to database
-        const result = new Result({
-            userId,
-            score,
-            questionsAnswered: questions.length,
-            correctAnswers,
-            type: 'daily',
-            questionIds,
-            userAnswers: answers,
-            dateTaken: new Date()
-        });
-        await result.save();
+        if (user.emailVerified) {
+            // Save result to database
+            const result = new Result({
+                userId,
+                score,
+                questionsAnswered: questions.length,
+                correctAnswers,
+                type: 'daily',
+                questionIds,
+                userAnswers: answers,
+                dateTaken: new Date()
+            });
+            await result.save();
 
-        // Update user progress
-    // Determine daily max for this user (recompute here for clarity)
-    const maxDailySubmit = user.subscriptionActive ? 10 : 2;
-    const increment = user.dailyQuestionIds.length;
-    user.currentQuestionIndex = (user.currentQuestionIndex || 0) + increment;
-    user.lastDailyDate = new Date(); // mark completion
-    user.dailyQuestionCount = maxDailySubmit;
-    // Clear allocation after successful submission to avoid re-use and to allow clean fetch tomorrow only
-    user.dailyQuestionIds = [];
-    // Keep dailyQuestionsDate as the date of allocation; optionally could clear, but leave for reference
-        await user.save();
+            // Update user progress for verified users only
+            const maxDailySubmit = isPro ? 10 : 2;
+            const increment = user.dailyQuestionIds.length;
+            user.currentQuestionIndex = (user.currentQuestionIndex || 0) + increment;
+            user.lastDailyDate = new Date(); // mark completion
+            user.dailyQuestionCount = maxDailySubmit;
+            // Clear allocation after successful submission to avoid re-use and to allow clean fetch tomorrow only
+            user.dailyQuestionIds = [];
+            // Keep dailyQuestionsDate as the date of allocation; optionally could clear, but leave for reference
+            await user.save();
 
-        return res.status(200).json({
-            message: 'Daily practice submitted successfully',
-            score,
-            correctAnswers,
-            totalQuestions: questions.length,
-            feedback,
-            progress: user.currentQuestionIndex,
-            totalInBank: user.subscriptionActive ? 1000 : 100
-        });
+            return res.status(200).json({
+                message: 'Daily practice submitted successfully',
+                score,
+                correctAnswers,
+                totalQuestions: questions.length,
+                feedback,
+                progress: user.currentQuestionIndex,
+                totalInBank: isPro ? 1000 : 100,
+                saved: true
+            });
+        } else {
+            // Unverified users: do NOT persist results or advance progress; keep same allocation
+            return res.status(200).json({
+                message: 'Daily practice completed (not saved). Verify your email to unlock detailed results and saved progress.',
+                score,
+                correctAnswers,
+                totalQuestions: questions.length,
+                feedback,
+                progress: user.currentQuestionIndex || 0,
+                totalInBank: isPro ? 1000 : 100,
+                saved: false
+            });
+        }
 
     } catch (error) {
         res.status(500).json({ message: 'Error submitting daily answers', error });
@@ -350,13 +357,23 @@ export const getUserProgress = async (req: Request, res: Response) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        // Get daily practice history
+        // Get daily practice history (original daily attempts)
         const dailyHistory = await Result.find({ 
             userId, 
             type: 'daily' 
         }).sort({ dateTaken: -1 }).limit(10);
 
-        const isPro = !!user.subscriptionActive;
+        // Get recent retake attempts linked to those daily results
+        const baseIds = dailyHistory.map(r => String(r._id));
+        let retakeHistory: any[] = [];
+        if (baseIds.length > 0) {
+            retakeHistory = await Result.find({ userId, type: 'daily-retake', baseResultId: { $in: baseIds } })
+                .sort({ dateTaken: -1 })
+                .limit(50); // cap retake history
+        }
+
+    // Admins also get pro progress limits
+    const isPro = !!(user.subscriptionActive || (user as any).admin);
         const emailVerified = !!user.emailVerified;
         if (!emailVerified) {
             return res.status(200).json({
@@ -384,10 +401,19 @@ export const getUserProgress = async (req: Request, res: Response) => {
                 user.lastDailyDate.toDateString() !== new Date().toDateString() : true,
             lastPracticeDate: user.lastDailyDate,
             dailyHistory: dailyHistory.map(result => ({
+                id: String(result._id),
                 date: result.dateTaken,
                 score: result.score,
                 correctAnswers: result.correctAnswers,
                 totalQuestions: result.questionsAnswered
+            })),
+            retakeHistory: retakeHistory.map(r => ({
+                id: String(r._id),
+                baseResultId: r.baseResultId,
+                date: r.dateTaken,
+                score: r.score,
+                correctAnswers: r.correctAnswers,
+                totalQuestions: r.questionsAnswered
             })),
             plan: isPro ? 'pro' : 'free'
         });
@@ -403,8 +429,8 @@ export const getRetakeDailyQuestions = async (req: Request, res: Response) => {
         const userId = (req.user as any)?.id as string | undefined;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
         const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        if (!user.emailVerified) return res.status(403).json({ message: 'Email verification required.' });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    // Allow unverified users to retrieve retake questions so they can track what they did
 
         // Find today's original daily result (not a retake)
         const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
@@ -441,7 +467,7 @@ export const submitRetakeDailyAnswers = async (req: Request, res: Response) => {
         if (!answers || typeof answers !== 'object' || !baseResultId) {
             return res.status(400).json({ message: 'Invalid payload' });
         }
-        const base = await Result.findOne({ _id: baseResultId, userId, type: 'daily' }).lean();
+    const base = await Result.findOne({ _id: baseResultId, userId, type: 'daily' }).lean();
         if (!base) return res.status(404).json({ message: 'Base daily result not found' });
 
         const questionIds = Object.keys(answers);

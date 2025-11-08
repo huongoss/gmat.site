@@ -35,7 +35,7 @@
 .hero.section-base { padding-top: 100px; padding-bottom: 100px; }
 @media (min-width: 640px) { .hero.section-base { padding-top: 128px; padding-bottom: 128px; } }
 .hero-inner { position: relative; max-width: 960px; margin: 0 auto; z-index: 1; padding: 0 var(--space-4); }
-.hero-title { font-size: 2.25rem; font-weight: 800; line-height: 1.15; margin: 0 0 var(--space-4); text-shadow: 0 2px 8px rgba(0,0,0,0.25); letter-spacing: -.5px; color: var(--color-hero-title); }
+.hero-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; line-height: 1.1; margin: 0 0 var(--space-4); text-shadow: 0 2px 8px rgba(0,0,0,0.25); letter-spacing: -.02em; color: var(--color-hero-title); }
 /* Generic center alignment for section inner containers */
 .home .section-base > .container { text-align: center; }
 /* Preserve left alignment for specific inner text blocks if needed (override later) */
@@ -70,16 +70,16 @@
 #signup .form-actions { justify-content: center; }
 .how-grid { display: grid; gap: var(--space-5); }
 @media (min-width: 768px) { .how-grid { grid-template-columns: repeat(3, 1fr); } }
- .how-card { padding: var(--space-6); background: #fff; border: 1px solid var(--color-border); border-radius: 24px; box-shadow: var(--shadow-sm); transition: transform .25s ease, box-shadow .25s ease; text-align: left; }
+.how-card { padding: var(--space-6); background: #fff; border: 1px solid var(--color-border); border-radius: 24px; box-shadow: var(--shadow-sm); transition: transform .25s ease, box-shadow .25s ease; text-align: left; }
 /* Remove duplicate hero-title override that caused regression */
-.how-card h3 { margin: 0 0 var(--space-3); font-size: 1.25rem; font-weight: 600; }
+.how-card h3 { margin: 0 0 var(--space-3); font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
 .how-card p { margin: 0; color: var(--color-text-muted); }
 
 /* Science section */
 /* Keep single hero-sub definition (above) */
 .science { padding: 80px var(--space-4); text-align: center; }
 .science-inner { max-width: 880px; margin: 0 auto; }
-.science h2 { font-size: 2rem; margin: 0 0 var(--space-4); }
+.science h2 { font-size: clamp(1.8rem, 3vw, 2.25rem); margin: 0 0 var(--space-4); letter-spacing: -.01em; }
 @media (min-width: 768px) { .science h2 { font-size: 2.25rem; } }
 .credibility h2 { font-size: 1.9rem; margin: 0 0 var(--space-3); letter-spacing: -.5px; }
 .science p { font-size: 1rem; line-height: 1.55; margin: 0 0 var(--space-6); }
@@ -88,7 +88,7 @@
 /* Pricing teaser */
 .how-title { font-size: 1.9rem; margin: 0 0 var(--space-5); letter-spacing: -.5px; }
 .pricing-teaser { background: var(--color-surface-alt); padding: 80px var(--space-4); text-align: center; }
-.pricing-teaser h2 { font-size: 2rem; margin: 0 0 var(--space-4); }
+.pricing-teaser h2 { font-size: clamp(1.8rem, 3vw, 2.25rem); margin: 0 0 var(--space-4); letter-spacing: -.01em; }
 @media (min-width: 768px) { .pricing-teaser h2 { font-size: 2.25rem; } }
 .pricing-teaser p { font-size: 1rem; margin: 0 0 var(--space-6); }
 .science h2 { font-size: 1.9rem; margin: 0 0 var(--space-4); letter-spacing: -.5px; }

@@ -1,11 +1,15 @@
 /* Basic navbar styles */
 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) 0;
   background-color: var(--color-header-bg);
   color: #fff;
+  box-shadow: 0 2px 12px rgba(2,6,23,.25);
 }
 
 .navbar > .container {
@@ -19,9 +23,7 @@
   text-decoration: none;
 }
 
-.navbar a:hover {
-  text-decoration: underline;
-}
+.navbar a:hover { text-decoration: none; }
 
 .navbar-brand a {
   font-weight: 700;
@@ -47,9 +49,10 @@
   .nav-link { padding: 4px 6px; font-size: .85rem; }
 }
 
-.nav-link { padding: 6px 8px; border-radius: var(--radius-sm); }
+.nav-link { padding: 8px 10px; border-radius: var(--radius-sm); transition: background .15s ease, transform .1s ease; }
 .nav-link--active { background: rgba(255,255,255,0.12); }
 .nav-link:focus-visible { outline: 3px solid rgba(255,255,255,0.45); outline-offset: 2px; }
+.nav-link:hover { background: rgba(255,255,255,0.08); }
 
 /* Daily link highlight animation */
 @keyframes dailyHighlight {

@@ -4,6 +4,9 @@ import useAuth from '../hooks/useAuth';
 import { getDailyQuestions, submitDailyAnswers, getUserProgress, getRetakeDailyQuestions, submitRetakeDailyAnswers, fetchDemoQuestions } from '../services/api';
 import { useLocation } from 'react-router-dom';
 import QuestionCard from '../components/QuestionCard';
+import Timer from '../components/Timer';
+import ResultSummary from '../components/ResultSummary';
+import EmotionFeedback from '../components/EmotionFeedback';
 import { useAskGmatDialog } from '../context/AskGmatContext';
 import { useCustomPrompt } from '../context/CustomPromptContext';
 
@@ -24,6 +27,11 @@ const DailyPractice: React.FC = () => {
   const [canPractice, setCanPractice] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null); // error specifically for submit
   const [autoProgressLoaded, setAutoProgressLoaded] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
+  // pacing state
+  const [qStartAt, setQStartAt] = useState<number | null>(null);
+  const [perTimes, setPerTimes] = useState<Record<string, number>>({});
+  const [testStartAt, setTestStartAt] = useState<number | null>(null);
   const { submit: submitCustomPrompt } = useCustomPrompt();
 
   const buildAskPrompt = (qText: string, options: { id: string; text: string }[] | undefined, correct: string) => {
@@ -68,6 +76,9 @@ const DailyPractice: React.FC = () => {
           setProgress(null);
           setCanPractice(true);
           setIsRetake(false);
+          const now = Date.now();
+          setTestStartAt(now);
+          setQStartAt(now);
         } else if (isRetakeMode) {
           const data = await getRetakeDailyQuestions();
           setIsRetake(true);
@@ -78,6 +89,9 @@ const DailyPractice: React.FC = () => {
           setPlan(derivedPlan as any);
           setProgress(null);
           setCanPractice(true);
+          const now = Date.now();
+          setTestStartAt(now);
+          setQStartAt(now);
         } else {
           const data = await getDailyQuestions();
           setPlan(data.plan);
@@ -87,6 +101,9 @@ const DailyPractice: React.FC = () => {
           if (!data.canPractice && data.message) {
             setError(data.message);
           }
+          const now = Date.now();
+          setTestStartAt(now);
+          setQStartAt(now);
         }
       } catch (e: any) {
         setError(e?.response?.data?.message || e?.message || 'Failed to load daily questions');
@@ -115,7 +132,15 @@ const DailyPractice: React.FC = () => {
   const numAnswered = useMemo(() => Object.keys(answers).length, [answers]);
 
   const onSelect = (qid: string, optionId: string) => {
-    if (submitting) return; // prevent changing answers mid-submit
+    if (submitting || timeUp) return; // prevent changing answers mid-submit or after time up
+    // record time spent if first time answering this question
+    if (!answers[qid]) {
+      const started = qStartAt || (testStartAt || Date.now());
+      const elapsedSec = Math.max(1, Math.round((Date.now() - started) / 1000));
+      setPerTimes(prev => ({ ...prev, [qid]: elapsedSec }));
+      // set new start time for pacing next question
+      setQStartAt(Date.now());
+    }
     setAnswers((prev) => ({ ...prev, [qid]: optionId }));
   };
 
@@ -129,13 +154,21 @@ const DailyPractice: React.FC = () => {
       setSubmitError('No questions to submit.');
       return;
     }
-    if (numAnswered < total) {
+    // Enforce full completion unless time has expired
+    if (!timeUp && numAnswered < total) {
       setSubmitError(`Please answer all questions (${numAnswered}/${total}).`);
       return;
     }
     try {
       setSubmitError(null);
       setSubmitting(true);
+      // Build final answers; if timeUp, mark unanswered as blank so they count as wrong
+      const finalAnswers: Record<string,string> = { ...answers };
+      if (timeUp && numAnswered < total) {
+        for (const q of questions) {
+          if (!finalAnswers[q.id]) finalAnswers[q.id] = '';
+        }
+      }
       if (isIntroMode) {
         // Client-side scoring only for intro; answers are deterministic (demo file includes answer key)
         // Re-fetch demo for answer key (could cache earlier but small cost)
@@ -143,7 +176,7 @@ const DailyPractice: React.FC = () => {
         const slice = demo.slice(0, INTRO_LIMIT);
         let correct = 0;
         const feedback = slice.map((q, idx) => {
-          const userAnswer = answers[String(q.id)];
+          const userAnswer = finalAnswers[String(q.id)];
           const isCorrect = String(userAnswer).toLowerCase() === String(q.answer).toLowerCase();
           if (isCorrect) correct++;
           return {
@@ -162,10 +195,10 @@ const DailyPractice: React.FC = () => {
           intro: true,
         });
       } else if (isRetake && baseResultId) {
-        const submitResult = await submitRetakeDailyAnswers(baseResultId, answers);
+        const submitResult = await submitRetakeDailyAnswers(baseResultId, finalAnswers);
         setResult({ ...submitResult, retake: true });
       } else {
-        const submitResult = await submitDailyAnswers(answers);
+        const submitResult = await submitDailyAnswers(finalAnswers);
         setResult(submitResult);
       }
       setSubmitted(true);
@@ -173,6 +206,26 @@ const DailyPractice: React.FC = () => {
       setSubmitError(e?.response?.data?.message || e?.message || 'Submit failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleTimeUp = () => {
+    if (submitted) return;
+    setTimeUp(true);
+    // capture final question time if unanswered
+    if (questions.length) {
+      const lastQ = questions[questions.length - 1];
+      if (lastQ && perTimes[lastQ.id] == null) {
+        const started = qStartAt || (testStartAt || Date.now());
+        const elapsedSec = Math.max(1, Math.round((Date.now() - started) / 1000));
+        setPerTimes(prev => ({ ...prev, [lastQ.id]: elapsedSec }));
+      }
+    }
+    // Auto-submit if all answered; otherwise prompt user that unanswered count will count as wrong
+    if (numAnswered === total) {
+      void onSubmit();
+    } else {
+      setSubmitError(`Time is up. ${total - numAnswered} unanswered question(s) will count as wrong. Submit to see results.`);
     }
   };
 
@@ -193,13 +246,52 @@ const DailyPractice: React.FC = () => {
   if (error && canPractice) return <div className="card content-narrow"><p className="alert alert-danger">{error}</p></div>;
 
   if (submitted && result) {
+    const emailVerified = !!user?.emailVerified;
+    const pacingLabel = (s: number) => {
+      if (s <= 60) return 'very fast';
+      if (s <= 135) return 'on pace';
+      if (s <= 180) return 'a bit slow';
+      return 'too slow';
+    };
     return (
       <div className="card content-narrow">
         <h1 className="page-title">{isIntroMode ? 'Intro Practice – Results' : (isRetake ? 'Retake – Daily Set' : 'Daily practice')}</h1>
         {!isIntroMode && <p className="mt-2">Plan: {plan === 'pro' ? 'Monthly' : 'Free'}</p>}
         <p className="alert alert-success">{isIntroMode ? 'Intro set complete!' : (isRetake ? 'Retake completed' : 'Completed!')} Score: {result.correctAnswers}/{result.totalQuestions} ({result.score}%) {result.originalScore !== undefined && !isRetake && !isIntroMode && `(Original: ${result.originalScore}%)`}</p>
+        {!isIntroMode && !isRetake && !emailVerified && (
+          <p className="alert alert-info">Great job! Verify your email to unlock detailed results. <button className="btn-inline" onClick={() => navigate('/account')}>Verify now</button></p>
+        )}
+        {/* Summary modules similar to trial results */}
+        <div className="result-modules" style={{ marginTop: 8 }}>
+          <ResultSummary
+            score={Number(result.correctAnswers) || 0}
+            totalQuestions={Number(result.totalQuestions) || 0}
+            onRetake={() => navigate('/daily?retake=1')}
+            onReview={() => navigate('/review')}
+            disableRetake={isIntroMode || !emailVerified}
+            disableReview={!emailVerified}
+          />
+          <EmotionFeedback correctAnswers={Number(result.correctAnswers) || 0} totalQuestions={Number(result.totalQuestions) || 0} />
+        </div>
         {!isRetake && !isIntroMode && result.progress !== undefined && (<p className="muted">Progress: {result.progress}/{result.totalInBank}</p>)}
-        {result.feedback && (
+        {/* Pacing insights (only if detailed feedback allowed) */}
+        {(user?.emailVerified || isIntroMode || isRetake) && Object.keys(perTimes).length > 0 && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Your pacing</h3>
+            <p className="muted" style={{ marginTop: 0 }}>Target is about 120 seconds per question.</p>
+            <ul style={{ paddingLeft: 18, marginTop: 8 }}>
+              {questions.map((q, idx) => (
+                <li key={q.id}>Q{idx + 1}: {perTimes[q.id] ?? 0}s {perTimes[q.id] != null && pacingLabel(perTimes[q.id]) && `(${pacingLabel(perTimes[q.id])})`}</li>
+              ))}
+            </ul>
+            {(() => {
+              const totalTime = Object.values(perTimes).reduce((a,b)=>a+(b||0),0);
+              const avg = questions.length ? Math.round(totalTime / questions.length) : 0;
+              return <p style={{ marginTop: 8 }}>Total time: <strong>{totalTime}s</strong> • Average pace: <strong>{avg}s</strong>/question</p>;
+            })()}
+          </div>
+        )}
+        {result.feedback && (emailVerified || isIntroMode || isRetake) && (
           <div className="mt-3">
             <h3>Results:</h3>
             {result.feedback.map((fb: any, idx: number) => {
@@ -210,7 +302,7 @@ const DailyPractice: React.FC = () => {
                     <span>
                       <strong>Q{idx + 1}:</strong> {fb.correct ? 'Correct!' : `Wrong. Correct answer: ${fb.correctAnswer}`}
                     </span>
-                    {!fb.correct && q && (
+                    {q && (emailVerified || isIntroMode || isRetake) && (
                       <button
                         className="btn"
                         onClick={() => submitCustomPrompt(buildAskPrompt(q.question, q.options, fb.correctAnswer))}
@@ -253,6 +345,14 @@ const DailyPractice: React.FC = () => {
         <p className="muted">Progress: {progress.current}/{progress.total} ({progress.percentage}%)</p>
       )}
 
+      {/* Timer only before submission */}
+      {!submitted && total > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <Timer duration={total * 120} onTimeUp={handleTimeUp} />
+          {timeUp && <p className="alert alert-info" style={{ marginTop: 8 }}>Time expired.</p>}
+        </div>
+      )}
+
       {questions.map((q, idx) => (
         <div key={q.id} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -270,8 +370,8 @@ const DailyPractice: React.FC = () => {
       {submitError && <p className="alert alert-danger" style={{ marginTop: 16 }}>{submitError}</p>}
 
       <div className="form-actions" style={{ marginTop: 24 }}>
-        <button className="btn" disabled={numAnswered < total || submitting} onClick={onSubmit}>
-          {submitting ? 'Submitting…' : numAnswered < total ? `Answer all (${numAnswered}/${total})` : (isIntroMode ? 'See Intro Results' : 'Submit')}
+        <button className="btn" disabled={(numAnswered < total && !timeUp) || submitting} onClick={onSubmit}>
+          {submitting ? 'Submitting…' : (numAnswered < total && !timeUp) ? `Answer all (${numAnswered}/${total})` : (isIntroMode ? 'See Intro Results' : 'Submit')}
         </button>
         {/* Hide upgrade button during retake & intro; only show on original daily mode */}
         {!isRetake && !isIntroMode && plan !== 'pro' && (

@@ -25,6 +25,7 @@ const Review: React.FC = () => {
                 // Prefer progress endpoint (contains latest daily history + ensures auth) then fall back
                 const progress = await getUserProgress();
                 const dailyHistory = progress?.dailyHistory || [];
+                const retakeHistory = progress?.retakeHistory || [];
                 // progress.dailyHistory returns only daily results summary; we still want retakes & other types -> fallback fetch
                 const id = (user as any)?._id || (user as any)?.id;
                 let fullResults: any[] = [];
@@ -32,15 +33,43 @@ const Review: React.FC = () => {
                     try {
                         const data = await fetchUserResults(id);
                         fullResults = Array.isArray(data) ? data : [];
+                        // Ensure retake results are included if backend endpoint didn't return them yet
+                        const existingIds = new Set(fullResults.map(r => String(r._id || r.id)));
+                        retakeHistory.forEach((r: any) => {
+                            if (!existingIds.has(String(r.id))) {
+                                fullResults.push({
+                                    _id: r.id,
+                                    id: r.id,
+                                    dateTaken: r.date,
+                                    score: r.score,
+                                    correctAnswers: r.correctAnswers,
+                                    questionsAnswered: r.totalQuestions,
+                                    type: 'daily-retake',
+                                    baseResultId: r.baseResultId
+                                });
+                            }
+                        });
                     } catch {
                         // ignore fetch error, fallback to dailyHistory minimal mapping
-                        fullResults = dailyHistory.map((d: any) => ({
-                            dateTaken: d.date,
-                            score: d.score,
-                            correctAnswers: d.correctAnswers,
-                            questionsAnswered: d.totalQuestions,
-                            type: 'daily'
-                        }));
+                        fullResults = [
+                            ...dailyHistory.map((d: any) => ({
+                                dateTaken: d.date,
+                                score: d.score,
+                                correctAnswers: d.correctAnswers,
+                                questionsAnswered: d.totalQuestions,
+                                type: 'daily',
+                                id: d.id
+                            })),
+                            ...retakeHistory.map((r: any) => ({
+                                dateTaken: r.date,
+                                score: r.score,
+                                correctAnswers: r.correctAnswers,
+                                questionsAnswered: r.totalQuestions,
+                                type: 'daily-retake',
+                                id: r.id,
+                                baseResultId: r.baseResultId
+                            }))
+                        ];
                     }
                 }
                 if (!cancelled) setResults(fullResults);

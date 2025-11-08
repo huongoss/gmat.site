@@ -116,7 +116,7 @@ const Home: React.FC = () => {
             to="/test"
             className="btn-outline"
             onClick={() => trackEvent('cta_click', { location: 'home_pricing', cta: 'start_trial_secondary' })}
-          >Try 10 Free Questions</Link>
+          >Try 2 Free Questions</Link>
         </div>
       </section>
     </div>
