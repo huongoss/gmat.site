@@ -11,7 +11,7 @@ const VoiceFloatingLauncher: React.FC = () => {
   // Always render launcher now; guests get text-only experience inside widget.
   return (
     <>
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1200 }}>
+      <div className="ask-launcher" style={{ position: 'fixed', bottom: 'calc(24px + var(--bottom-banner-height, 0px) + env(safe-area-inset-bottom, 0px))', right: 24, zIndex: 2200 }}>
         {!open && (
           <button onClick={() => { setOpen(true); openDialog(); }} style={{ width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#4f46e5,#6366f1)', color: '#fff', fontWeight: 600, fontSize: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.25)', cursor: 'pointer', position: 'relative' }}>
             Ask GMAT
@@ -25,9 +25,9 @@ const VoiceFloatingLauncher: React.FC = () => {
         <div
           style={{
             position: 'fixed',
-            bottom: 100,
+            bottom: 'calc(100px + var(--bottom-banner-height, 0px) + env(safe-area-inset-bottom, 0px))',
             right: 24,
-            zIndex: 1300,
+            zIndex: 2300,
             width: 'auto',
           }}
         >
@@ -45,7 +45,7 @@ const VoiceFloatingLauncher: React.FC = () => {
             @media (max-width: 640px) {
               .vcw-overlay { display: block; }
               /* Move the closed launcher away from edges on tiny screens */
-              .ask-launcher { bottom: 16px; right: 16px; }
+              .ask-launcher { right: 16px; }
             }
           `}</style>
           <div style={{ position: 'relative', maxWidth: '100vw' }}>

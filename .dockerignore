@@ -1,0 +1,28 @@
+# Exclude development and unused directories from Docker build context
+.git
+.gitignore
+**/.DS_Store
+
+# Never send local node_modules; we install inside the image
+node_modules
+client/node_modules
+server/node_modules
+
+# Exclude mobile app (not part of server/web deployment)
+mobile/
+mobile/**
+
+# Exclude build artifacts and archives
+**/*.aab
+**/*.apk
+**/*.ipa
+**/*.zip
+
+# Exclude credentials and certificates
+**/*.keystore
+**/*.jks
+**/*.pem
+**/*.p12
+
+# Optional: scripts are not needed inside the image
+scripts/

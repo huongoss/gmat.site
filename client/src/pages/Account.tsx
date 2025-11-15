@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription, updateName } from '../services/api';
+import InstallPrompt from '../components/InstallPrompt';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
@@ -203,7 +204,11 @@ const Account: React.FC = () => {
         );
     }
 
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
     return (
+        <>
         <div className="card content-narrow">
             <h1 className="page-title">Account</h1>
             {message && <p className="alert alert-success">{message}</p>}
@@ -419,6 +424,9 @@ const Account: React.FC = () => {
                                 </div>
                         )}
         </div>
+        {/* PWA Install guidance: only shown on Account page when not on localhost (localhost is handled globally for dev) */}
+        {!isLocalhost && <InstallPrompt />}
+        </>
     );
 };
 

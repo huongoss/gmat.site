@@ -44,3 +44,18 @@ root.render(
     </AuthProvider>
   </React.StrictMode>
 );
+
+// Register a simple service worker in production to enable PWA install
+if ('serviceWorker' in navigator) {
+  const isLocalhost = Boolean(
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '::1'
+  );
+  // Only register on HTTPS or localhost
+  if (window.location.protocol === 'https:' || isLocalhost) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+}

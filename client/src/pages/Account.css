@@ -1,0 +1,175 @@
+/* Base styles for the Account page container */
+.account-page {
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative background shapes for depth */
+.account-page::before,
+.account-page::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.3;
+}
+
+.account-page::before {
+  width: 300px;
+  height: 300px;
+  background: #a8c0ff; /* Light blue */
+  top: 5%;
+  left: 10%;
+}
+
+.account-page::after {
+  width: 400px;
+  height: 400px;
+  background: #ffc3a0; /* Light orange */
+  bottom: 10%;
+  right: 5%;
+}
+
+/* The main "glass" card */
+.account-card {
+  max-width: 700px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid rgba(209, 213, 219, 0.3);
+  padding: 2.5rem;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  z-index: 10;
+  position: relative;
+}
+
+/* Section styling within the card */
+.account-section {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(209, 213, 219, 0.5);
+}
+.account-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.account-section:first-child {
+  padding-top: 0;
+}
+
+.account-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+
+.info-label {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.info-value {
+  color: #1f2937;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.status-badge.verified, .status-badge.active {
+  background-color: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+.status-badge.unverified, .status-badge.inactive {
+  background-color: rgba(249, 115, 22, 0.1);
+  color: #b45309;
+}
+
+/* iOS-style buttons */
+.btn-ios {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-ios:hover {
+  transform: translateY(-2px);
+}
+.btn-ios.primary {
+  background-color: #007aff;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 122, 255, 0.2);
+}
+.btn-ios.secondary {
+  background-color: rgba(230, 230, 230, 0.8);
+  color: #007aff;
+}
+.btn-ios.danger {
+  background-color: transparent;
+  color: #ff3b30;
+}
+
+/* Modal styles */
+.modal-glass-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1400;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-glass-content {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(209, 213, 219, 0.3);
+  padding: 2rem;
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+.modal-glass-content h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+.modal-glass-content p {
+  margin-bottom: 2rem;
+  color: #4b5563;
+}
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}

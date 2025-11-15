@@ -1,0 +1,210 @@
+/* === Global Theme & Glassmorphism Redesign === */
+
+:root {
+  --primary-color: #007aff; /* A vibrant blue, classic for iOS */
+  --primary-color-light: #eaf5ff;
+  --secondary-color: #8e8e93; /* A neutral gray for secondary text/elements */
+  --accent-color: #ff9500; /* A warm orange for highlights */
+  --success-color: #34c759;
+  --danger-color: #ff3b30;
+  --background-light: #f2f2f7;
+  --background-dark: #1c1c1e;
+  --card-background-light: rgba(255, 255, 255, 0.7);
+  --card-background-dark: rgba(44, 44, 46, 0.7);
+  --text-color-light: #1d1d1f;
+  --text-color-dark: #f5f5f7;
+  --border-color-light: rgba(0, 0, 0, 0.1);
+  --border-color-dark: rgba(255, 255, 255, 0.15);
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  --card-border-radius: 18px;
+  --blur-effect: blur(12px);
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--background-light);
+  color: var(--text-color-light);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Basic page layout */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-color-light);
+  margin-bottom: 1.5rem;
+}
+
+/* === Glass Card Effect === */
+.glass-card {
+  background: var(--card-background-light);
+  backdrop-filter: var(--blur-effect);
+  -webkit-backdrop-filter: var(--blur-effect);
+  border-radius: var(--card-border-radius);
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--card-shadow);
+  padding: 2rem;
+  transition: background 0.3s, border 0.3s;
+}
+
+/* === iOS-style Buttons === */
+.btn-ios {
+  font-family: var(--font-main);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  text-align: center;
+  display: inline-block;
+}
+
+.btn-ios:hover {
+  transform: translateY(-2px);
+}
+
+.btn-ios:active {
+  transform: translateY(0);
+}
+
+.btn-ios.primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-ios.primary:hover {
+  background-color: #006ae0;
+}
+
+.btn-ios.secondary {
+  background-color: #e5e5ea;
+  color: var(--primary-color);
+}
+
+.btn-ios.secondary:hover {
+  background-color: #dcdce0;
+}
+
+.btn-ios.danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-ios.danger:hover {
+  background-color: #e03024;
+}
+
+.btn-ios:disabled {
+  background-color: #d1d1d6;
+  color: #8e8e93;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* === Form Elements === */
+.form-input {
+  font-family: var(--font-main);
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1rem;
+  border: 1px solid var(--border-color-light);
+  background-color: #f2f2f7;
+  border-radius: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+}
+
+.form-label {
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* === Alerts & Messages === */
+.alert {
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.alert-success {
+  background-color: #eaf7ec;
+  color: #2a6e3a;
+  border-color: #a3d9b1;
+}
+
+.alert-danger {
+  background-color: #fdecea;
+  color: #a52828;
+  border-color: #f7b9b5;
+}
+
+/* === Modal === */
+.modal-glass-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-glass-content {
+  background: var(--card-background-light);
+  backdrop-filter: var(--blur-effect);
+  -webkit-backdrop-filter: var(--blur-effect);
+  border-radius: var(--card-border-radius);
+  border: 1px solid var(--border-color-light);
+  box-shadow: var(--card-shadow);
+  padding: 2rem;
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+}
+
+.modal-glass-content h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.modal-glass-content p {
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}

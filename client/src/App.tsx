@@ -23,6 +23,7 @@ import { RequireAuth, GuestOnly } from './router/guards';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import VoiceFloatingLauncher from './components/VoiceFloatingLauncher';
+import InstallPrompt from './components/InstallPrompt';
 import ScrollToTop from './components/ScrollToTop';
 // Analytics handled by static gtag snippet in index.html
 import './styles/index.css';
@@ -60,6 +61,11 @@ const App: React.FC = () => {
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                     <Footer />
+                    {(() => {
+                        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+                        const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+                        return isLocalhost ? <InstallPrompt /> : null;
+                    })()}
                     <VoiceFloatingLauncher />
                 </div>
             </Router>
