@@ -22,6 +22,15 @@ const api = axios.create({
     baseURL: API_BASE_URL,
 });
 
+// If we're running inside a React Native WebView, attach a hint header so the
+// server can slightly relax reCAPTCHA scoring to account for WebView heuristics.
+try {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        api.defaults.headers.common['x-native-webview'] = 'android';
+    }
+} catch {}
+
 export const getApiBaseUrl = () => API_BASE_URL;
 
 export const setAuthToken = (token?: string) => {
