@@ -5,6 +5,7 @@ import SEO from '../components/SEO';
 // Temporary noop for previously used trackEvent references (analytics util removed)
 const trackEvent = (_name: string, _payload?: any) => {};
 import PromoBanner from '../components/PromoBanner';
+import InstallPrompt from '../components/InstallPrompt';
 
 const bgUrl = 'https://images.unsplash.com/photo-1596496056700-5c4f7a4b93f4?auto=format&fit=crop&w=1600&q=80';
 
@@ -119,6 +120,8 @@ const Home: React.FC = () => {
           >Try 2 Free Questions</Link>
         </div>
       </section>
+      {/* PWA Install guidance (public) */}
+      <InstallPrompt />
     </div>
   );
 };

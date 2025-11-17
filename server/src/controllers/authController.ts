@@ -11,8 +11,12 @@ const getJwtSecret = () => {
   return secret;
 };
 
-const signToken = (id: string) =>
-  jwt.sign({ id }, getJwtSecret(), { expiresIn: '1h' });
+// Issue JWT with configurable expiry (default 7 days). Longer sessions reduce re-login frequency.
+// SECURITY NOTE: With longer expiries consider adding token revocation (e.g. tokenVersion) or refresh tokens later.
+const signToken = (id: string) => {
+    const expiresIn = process.env.JWT_EXPIRY || '7d'; // e.g. set JWT_EXPIRY=1h for shorter sessions
+    return jwt.sign({ id }, getJwtSecret(), { expiresIn });
+};
 
 const extractEncryptedPassword = (body: any): string => {
     if (!body.passwordEnc) throw new Error('MISSING_ENCRYPTED_PASSWORD');

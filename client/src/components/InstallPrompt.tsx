@@ -83,8 +83,8 @@ const InstallPrompt: React.FC = () => {
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 12, display: 'flex', justifyContent: 'center', zIndex: 2000 }}>
       {visible && (
         <div style={{ background: 'rgba(20,22,30,0.9)', color: '#fff', padding: '10px 14px', borderRadius: 12, boxShadow: '0 6px 20px rgba(0,0,0,0.25)', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span>Install GMAT Practice?</span>
-          <button className="btn" onClick={onInstall} style={{ padding: '6px 10px' }}>Install</button>
+          <span>Add to Home Screen?</span>
+          <button className="btn" onClick={onInstall} style={{ padding: '6px 10px' }}>Save</button>
           <button className="btn btn-ghost" onClick={() => setVisible(false)} style={{ padding: '6px 10px' }}>Not now</button>
         </div>
       )}
