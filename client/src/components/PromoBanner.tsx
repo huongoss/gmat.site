@@ -9,15 +9,14 @@ const PromoBanner: React.FC = () => {
   const promo = NOVEMBER_PROMO;
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    const k = localStorage.getItem('promo_dismiss_nov90');
-    return k === '1';
-  });
+  // Session-only dismiss; do not persist to localStorage
+  const [dismissed, setDismissed] = useState<boolean>(false);
 
-  if (dismissed || !isPromoActive(promo)) return null;
-
+  // Hooks must be called unconditionally on every render; declare all hooks before any early returns.
   const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  if (dismissed || !isPromoActive(promo)) return null;
 
   const startDirectCheckout = async () => {
     // If authenticated, create checkout session immediately
@@ -57,7 +56,6 @@ const PromoBanner: React.FC = () => {
 
   const onDismiss = () => {
     setDismissed(true);
-    localStorage.setItem('promo_dismiss_nov90', '1');
     trackEvent('promo_dismiss', { code: promo.code });
   };
 
