@@ -4,9 +4,17 @@ import ResultSummary from '../components/ResultSummary';
 import EmotionFeedback from '../components/EmotionFeedback';
 import { fetchUserResults, getUserProgress } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { trackPageview } from '../utils/analytics';
 
 const Review: React.FC = () => {
     const { user, authLoading, isAuthenticated } = useAuth() as any;
+
+    // Track pageview for authenticated users
+    useEffect(() => {
+        if (isAuthenticated && !authLoading) {
+            trackPageview('/review', 'Review - GMAT.site');
+        }
+    }, [isAuthenticated, authLoading]);
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();

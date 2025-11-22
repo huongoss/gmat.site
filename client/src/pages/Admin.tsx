@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import { adminSendEmail, adminGetAllUsers, adminDeleteUser } from '../services/api';
+import { trackPageview } from '../utils/analytics';
 
 interface AdminUser {
   _id: string;
@@ -30,6 +31,13 @@ const Admin: React.FC = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  // Track pageview for admin users
+  useEffect(() => {
+    if (user?.admin) {
+      trackPageview('/admin', 'Admin - GMAT.site');
+    }
+  }, [user?.admin]);
 
   if (!user?.admin) {
     return <div className="card"><h2>Admin</h2><p>Forbidden</p></div>;

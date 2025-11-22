@@ -66,23 +66,18 @@ export const initAnalytics = (measurementId: string) => {
 };
 
 export const trackPageview = (path: string, title?: string) => {
-  const measurementId = (import.meta as any).env?.VITE_GA_MEASUREMENT_ID as string | undefined;
-  if (!measurementId) return;
-
-  const eventArgs: any[] = ['event', 'page_view', {
-    page_title: title || document.title,
-    page_location: window.location.href,
-    page_path: path,
-    send_to: measurementId,
-  }];
-
+  // GA must already be configured via index.html script; don't check measurementId here
   if (typeof window.gtag !== 'function') {
-    // Should rarely happen now, but queue defensively
-    pendingEvents.push(eventArgs);
+    console.warn('[Analytics] gtag not available; skipping pageview for', path);
     return;
   }
 
-  window.gtag(...eventArgs);
+  // Send page_view event; no need for send_to since gtag config already set the measurement ID
+  window.gtag('event', 'page_view', {
+    page_title: title || document.title,
+    page_location: window.location.href,
+    page_path: path,
+  });
 };
 
 export const trackEvent = (name: string, params?: Record<string, any>) => {

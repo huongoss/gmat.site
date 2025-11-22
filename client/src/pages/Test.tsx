@@ -7,6 +7,7 @@ import ResultSummary from '../components/ResultSummary';
 import EmotionFeedback from '../components/EmotionFeedback';
 import { useCustomPrompt } from '../context/CustomPromptContext';
 import { fetchDemoQuestions, getDailyQuestions, submitDailyAnswers, getRetakeDailyQuestions, submitRetakeDailyAnswers } from '../services/api';
+import { trackPageview } from '../utils/analytics';
 import './Test.css';
 
 interface PracticeQuestion {
@@ -41,6 +42,13 @@ const Test: React.FC = () => {
 
   // Determine mode (daily vs trial) based on path
   const isDailyMode = typeof window !== 'undefined' && window.location.pathname.startsWith('/daily');
+
+  // Track pageview for /daily route (authenticated users only)
+  useEffect(() => {
+    if (isDailyMode && isAuthenticated) {
+      trackPageview('/daily', 'Daily Practice - GMAT.site');
+    }
+  }, [isDailyMode, isAuthenticated]);
 
   useEffect(() => {
     (async () => {

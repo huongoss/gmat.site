@@ -3,11 +3,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { createCheckoutSession, resendVerificationEmail, cancelSubscription, verifyCheckoutSession, fetchLiveSubscription, updateName } from '../services/api';
 import InstallPrompt from '../components/InstallPrompt';
+import { trackPageview } from '../utils/analytics';
 
 const Account: React.FC = () => {
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const { user, logout, isAuthenticated, refreshProfile } = useAuth();
+
+    // Track pageview for authenticated users
+    useEffect(() => {
+        if (isAuthenticated) {
+            trackPageview('/account', 'Account - GMAT.site');
+        }
+    }, [isAuthenticated]);
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
