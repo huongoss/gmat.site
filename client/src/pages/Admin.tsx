@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
-import { adminSendEmail, adminGetAllUsers, adminDeleteUser } from '../services/api';
+import { adminSendEmail, adminGetAllUsers, adminDeleteUser, resendVerificationEmail } from '../services/api';
 import { trackPageview } from '../utils/analytics';
 
 interface AdminUser {
@@ -31,6 +31,8 @@ const Admin: React.FC = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
+  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
 
   // Track pageview for admin users
   useEffect(() => {
@@ -88,6 +90,25 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleResendVerification = async (userId: string, email: string) => {
+    if (!window.confirm(`Resend verification email to "${email}"?`)) {
+      return;
+    }
+    setResendingUserId(userId);
+    setVerificationSuccess(null);
+    try {
+      await resendVerificationEmail(email);
+      setVerificationSuccess(`✅ Verification email sent successfully to ${email}`);
+      // Auto-hide after 5 seconds
+      setTimeout(() => setVerificationSuccess(null), 5000);
+    } catch (err: any) {
+      setUsersError(`Failed to resend verification email: ${err?.response?.data?.message || err.message}`);
+      setTimeout(() => setUsersError(null), 5000);
+    } finally {
+      setResendingUserId(null);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       loadUsers();
@@ -131,6 +152,11 @@ const Admin: React.FC = () => {
               {loadingUsers ? 'Loading...' : 'Refresh'}
             </button>
           </div>
+          {verificationSuccess && (
+            <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
+              {verificationSuccess}
+            </div>
+          )}
           {usersError && <p className="alert alert-danger">{usersError}</p>}
           {loadingUsers && <p>Loading users...</p>}
           {!loadingUsers && users.length === 0 && <p>No users found.</p>}
@@ -166,15 +192,28 @@ const Admin: React.FC = () => {
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
                       <td style={{ padding: '8px' }}>
-                        <button
-                          className="btn-outline"
-                          style={{ fontSize: '.75rem', padding: '4px 8px' }}
-                          onClick={() => handleDeleteUser(u._id, u.email)}
-                          disabled={deletingUserId === u._id || u.admin}
-                          title={u.admin ? 'Cannot delete admin users' : 'Delete user'}
-                        >
-                          {deletingUserId === u._id ? 'Deleting...' : 'Delete'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {!u.emailVerified && (
+                            <button
+                              className="btn-outline"
+                              style={{ fontSize: '.75rem', padding: '4px 8px', backgroundColor: 'var(--color-primary)', color: 'white' }}
+                              onClick={() => handleResendVerification(u._id, u.email)}
+                              disabled={resendingUserId === u._id}
+                              title="Resend verification email"
+                            >
+                              {resendingUserId === u._id ? 'Sending...' : '📧 Verify'}
+                            </button>
+                          )}
+                          <button
+                            className="btn-outline"
+                            style={{ fontSize: '.75rem', padding: '4px 8px' }}
+                            onClick={() => handleDeleteUser(u._id, u.email)}
+                            disabled={deletingUserId === u._id || u.admin}
+                            title={u.admin ? 'Cannot delete admin users' : 'Delete user'}
+                          >
+                            {deletingUserId === u._id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

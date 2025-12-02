@@ -155,12 +155,18 @@ const Account: React.FC = () => {
     const handleModalResend = async () => {
         if (!user?.email) return;
         setResendLoading(true);
+        setError(null);
+        setMessage(null);
         try {
             const mod = await import('../services/api');
             await mod.resendVerificationEmail(user.email);
-            alert('Verification email resent. Check your inbox (and spam).');
+            setMessage('✅ Verification email resent! Check your inbox (and spam folder).');
+            setShowPostSignupVerify(false);
+            // Auto-hide message after 5 seconds
+            setTimeout(() => setMessage(null), 5000);
         } catch (e: any) {
-            alert(e?.response?.data?.message || e?.message || 'Failed to resend.');
+            setError(e?.response?.data?.message || e?.message || 'Failed to resend verification email.');
+            setTimeout(() => setError(null), 5000);
         } finally {
             setResendLoading(false);
         }
