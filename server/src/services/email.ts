@@ -1,18 +1,31 @@
 import sgMail from '@sendgrid/mail';
 import crypto from 'crypto';
+import { sendBrevoMail } from './brevo';
 
 // Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 const BRAND_NAME = process.env.BRAND_NAME || 'GMAT Practice';
 
+// Determine which email service to use based on environment
+const EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'sendgrid'; // 'sendgrid' or 'brevo'
+
+/**
+ * Main email sending function - routes to appropriate provider
+ */
 export const sendMail = async (to: string, subject: string, html: string) => {
+  // Check for email provider preference
+  if (EMAIL_PROVIDER === 'brevo' && process.env.BREVO_API_KEY) {
+    return sendBrevoMail(to, subject, html);
+  }
+  
+  // Default to SendGrid
   const fromRaw = process.env.SENDGRID_FROM_EMAIL || process.env.MAIL_FROM || 'no-reply@example.com';
   // If sender already includes a display name (has < or ") keep it; else wrap with brand name
   const from = /</.test(fromRaw) ? fromRaw : `${BRAND_NAME} <${fromRaw}>`;
 
   if (!process.env.SENDGRID_API_KEY) {
-    console.log('[DEV EMAIL]', { to, subject, html });
+    console.log('[DEV EMAIL - SendGrid]', { to, subject, html });
     return;
   }
 
@@ -25,9 +38,9 @@ export const sendMail = async (to: string, subject: string, html: string) => {
 
   try {
     await sgMail.send(msg);
-    console.log(`Email sent successfully to ${to}`);
+    console.log(`[SendGrid] Email sent successfully to ${to}`);
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('[SendGrid] Error sending email:', error);
     throw error;
   }
 };
