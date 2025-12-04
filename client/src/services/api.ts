@@ -210,7 +210,17 @@ export const fetchVoiceUsage = async () => {
 };
 
 // Local-only helper to fetch demo questions from public folder
-export const fetchDemoQuestions = async (): Promise<Array<{ id: number; question: string; options: { id: string; text: string }[]; answer: string }>> => {
+export const fetchDemoQuestions = async (): Promise<Array<{ 
+    id: number; 
+    question: string; 
+    options: { id: string; text: string }[]; 
+    answer: string;
+    type?: string;
+    category?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    explanation?: string;
+    verified?: boolean;
+}>> => {
     const res = await fetch('/data/demo-questions.json');
     const json = await res.json();
     return json.questions;

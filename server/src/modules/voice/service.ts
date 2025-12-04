@@ -159,7 +159,6 @@ export class VoiceRealtimeService {
         { role: 'system', content: this.systemPrompt },
         { role: 'user', content: userMessage }
       ],
-      temperature: 0.7,
       max_tokens: 800
     };
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -189,7 +188,6 @@ export class VoiceRealtimeService {
             { role: 'system', content: this.systemPrompt },
             { role: 'user', content: userMessage }
           ],
-          temperature: 0.7,
           max_output_tokens: 800
         })
       });

@@ -1,26 +1,69 @@
 {
   "questions": [
+
     {
-      "id": 1,
-      "question": "If 3x + 2y = 18 and x = 2, what is the value of y?",
+      "id": 9,
+      "type": "critical_reasoning",
+      "category": "evaluation",
+      "difficulty": "easy",
+      "question": "To reduce rush-hour traffic, the city plans to eliminate bus fares for one year. The mayor argues that because fares account for only 5 percent of transit revenue, service will not be cut, and free rides will entice many drivers to switch to buses, easing congestion. Which of the following would be most useful to know in evaluating whether this plan will reduce rush-hour congestion?",
       "options": [
-        { "id": "a", "text": "2" },
-        { "id": "b", "text": "4" },
-        { "id": "c", "text": "6" },
-        { "id": "d", "text": "8" }
+        {
+          "id": "a",
+          "text": "Whether the transit authority plans to install new payment systems after the free-fare year ends."
+        },
+        {
+          "id": "b",
+          "text": "Whether air pollution levels typically rise during the summer months."
+        },
+        {
+          "id": "c",
+          "text": "Whether buses on key commuter routes have significant unused capacity during rush-hour periods."
+        },
+        {
+          "id": "d",
+          "text": "Whether the city will expand bus service to tourist attractions on weekends."
+        },
+        {
+          "id": "e",
+          "text": "Whether neighboring towns are considering eliminating highway tolls next year."
+        }
       ],
-      "answer": "c"
+      "answer": "c",
+      "explanation": "The argument assumes that making buses free will allow more drivers to switch to buses and thereby reduce traffic. This effect depends critically on whether buses can accommodate additional riders during rush hour. If buses are already at or near capacity on key commuter routes, eliminating fares would not meaningfully increase bus use among car commuters, and congestion would likely remain. Thus, knowing whether there is significant unused rush-hour capacity (choice C) is most useful for evaluating the claim. Choices A, B, D, and E are not directly relevant to whether free fares will draw enough car commuters onto buses during rush hour to reduce congestion.",
+      "verified": true
     },
     {
-      "id": 2,
-      "question": "A tank can be filled by Pipe A in 6 hours and Pipe B in 4 hours. If both pipes are opened together, how long will it take to fill the tank?",
+      "id": 10,
+      "type": "critical_reasoning",
+      "category": "supporting_idea",
+      "difficulty": "medium",
+      "question": "A city’s transit authority claims that eliminating cash fares on buses will significantly reduce total route travel times. Cash transactions take, on average, four seconds longer than electronic taps, so buses will spend less time at stops after the change. The argument depends on which of the following assumptions?",
       "options": [
-        { "id": "a", "text": "2.4 hours" },
-        { "id": "b", "text": "3 hours" },
-        { "id": "c", "text": "3.5 hours" },
-        { "id": "d", "text": "4 hours" }
+        {
+          "id": "a",
+          "text": "A substantial proportion of bus boardings currently involve cash payment, especially during the busiest times."
+        },
+        {
+          "id": "b",
+          "text": "Most riders who currently pay cash will not object to acquiring and using electronic fare cards."
+        },
+        {
+          "id": "c",
+          "text": "Electronic tap times do not increase when buses are crowded."
+        },
+        {
+          "id": "d",
+          "text": "Bus routes with the worst on-time performance have more cash payers than other routes."
+        },
+        {
+          "id": "e",
+          "text": "The cost of upgrading the fare system to support cashless boarding will not exceed any budget savings from shorter trips."
+        }
       ],
-      "answer": "a"
+      "answer": "a",
+      "explanation": "The conclusion is that eliminating cash will significantly reduce total route times; the support is that each cash payment takes about four seconds longer than a tap. For that per-transaction difference to translate into a significant reduction at the route level, enough transactions must be cash today—particularly during peak periods when delays matter most. Thus, the argument assumes that cash use is sufficiently common (choice a). Choice b concerns rider attitudes, not whether dwell time falls. Choice c need not be true; even if tapping slows somewhat when crowded, cash would also be slow, and the key issue is prevalence of cash transactions. Choice d ties the claim to specific routes, which the argument does not require. Choice e addresses costs, not whether travel times will drop.",
+      "verified": true
     }
   ]
 }

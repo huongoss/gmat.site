@@ -13,6 +13,11 @@ export interface Question {
     questionText: string;
     options: string[];
     correctAnswer: string;
+    type?: string; // e.g., "quantitative", "critical_reasoning", "data_sufficiency", etc.
+    category?: string; // e.g., "algebra", "supporting_idea", "evaluation", etc.
+    difficulty?: 'easy' | 'medium' | 'hard';
+    explanation?: string; // explanation of the correct answer
+    verified?: boolean; // whether the question has been AI-verified
 }
 
 export interface Result {

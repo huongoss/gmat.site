@@ -8,8 +8,7 @@
     "build": "tsc --project tsconfig.json",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
-    "seed": "tsx src/scripts/seedQuestions.ts"
+    "test": "jest"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

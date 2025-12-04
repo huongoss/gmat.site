@@ -15,6 +15,11 @@ interface PracticeQuestion {
   question: string;
   options: { id: string; text: string }[];
   answer?: string; // trial has correct answer locally; daily does not until server evaluates
+  type?: string; // e.g., "quantitative", "critical_reasoning", "data_sufficiency", etc.
+  category?: string; // e.g., "algebra", "supporting_idea", "evaluation", etc.
+  difficulty?: 'easy' | 'medium' | 'hard';
+  explanation?: string; // explanation of the correct answer
+  verified?: boolean; // whether the question has been AI-verified
 }
 
 const Test: React.FC = () => {
@@ -62,6 +67,11 @@ const Test: React.FC = () => {
             id: String(q.id),
             question: q.question,
             options: q.options,
+            type: q.type,
+            category: q.category,
+            difficulty: q.difficulty,
+            explanation: q.explanation,
+            verified: q.verified,
           }));
           setQuestions(mapped);
           // Cache latest daily set for potential forced retake reuse
@@ -84,6 +94,11 @@ const Test: React.FC = () => {
                 id: String(q.id),
                 question: q.question,
                 options: q.options,
+                type: q.type,
+                category: q.category,
+                difficulty: q.difficulty,
+                explanation: q.explanation,
+                verified: q.verified,
               }));
               if (mappedRetake.length > 0) {
                 setQuestions(mappedRetake);
@@ -125,7 +140,12 @@ const Test: React.FC = () => {
             id: String(q.id),
             question: q.question,
             options: q.options,
-            answer: q.answer
+            answer: q.answer,
+            type: q.type,
+            category: q.category,
+            difficulty: q.difficulty,
+            explanation: q.explanation,
+            verified: q.verified,
           }));
           setQuestions(mapped);
         }
@@ -423,6 +443,9 @@ const Test: React.FC = () => {
             options={q.options}
             selectedOptionId={answers[q.id] || null}
             onOptionSelect={onAnswer}
+            type={q.type}
+            category={q.category}
+            difficulty={q.difficulty}
           />
         )}
         {totalQuestions > 0 && (

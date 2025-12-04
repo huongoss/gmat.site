@@ -6,6 +6,9 @@ interface QuestionCardProps {
     options: Array<{ id: string; text: string }>;
     selectedOptionId: string | null;
     onOptionSelect: (optionId: string) => void;
+    type?: string;
+    category?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 // Try to detect GMAT Data Sufficiency style formatting like
@@ -46,13 +49,63 @@ function parseDataSufficiency(q: string): { stem: string; statements: Array<{ la
     return { stem, statements };
 }
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ question, options, selectedOptionId, onOptionSelect }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ question, options, selectedOptionId, onOptionSelect, type, category, difficulty }) => {
     // Try to parse Data Sufficiency format for better presentation
     // MathRenderer handles all content (with or without $) so it's safe to parse
     const ds = parseDataSufficiency(question);
+    
+    // Helper to format type/category for display
+    const formatLabel = (text?: string) => text ? text.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+    
+    // Difficulty badge colors
+    const difficultyColor = difficulty === 'easy' ? '#22c55e' : difficulty === 'hard' ? '#ef4444' : '#f59e0b';
         
     return (
         <div className="question-card">
+            {/* Metadata badges */}
+            {(type || category || difficulty) && (
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    marginBottom: '16px', 
+                    flexWrap: 'wrap',
+                    fontSize: '0.85rem'
+                }}>
+                    {type && (
+                        <span style={{ 
+                            padding: '4px 12px', 
+                            backgroundColor: '#3b82f6', 
+                            color: 'white', 
+                            borderRadius: '12px',
+                            fontWeight: 500
+                        }}>
+                            {formatLabel(type)}
+                        </span>
+                    )}
+                    {category && (
+                        <span style={{ 
+                            padding: '4px 12px', 
+                            backgroundColor: '#8b5cf6', 
+                            color: 'white', 
+                            borderRadius: '12px',
+                            fontWeight: 500
+                        }}>
+                            {formatLabel(category)}
+                        </span>
+                    )}
+                    {difficulty && (
+                        <span style={{ 
+                            padding: '4px 12px', 
+                            backgroundColor: difficultyColor, 
+                            color: 'white', 
+                            borderRadius: '12px',
+                            fontWeight: 500
+                        }}>
+                            {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                        </span>
+                    )}
+                </div>
+            )}
             {!ds ? (
                 <h2 className="question"><MathRenderer text={question} /></h2>
             ) : (
