@@ -4,9 +4,21 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import Question from '../models/Question';
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const cleanFlag = args.includes('--clean') || args.includes('-c');
+
 async function main() {
   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/gmat-practice';
   await mongoose.connect(mongoUri as string);
+
+  // Clean (delete all) existing questions if --clean flag is provided
+  if (cleanFlag) {
+    const existingCount = await Question.countDocuments();
+    console.log(`🗑️  --clean flag detected. Deleting ${existingCount} existing questions...`);
+    await Question.deleteMany({});
+    console.log('✅ All existing questions deleted.');
+  }
 
   // Read all JSON files from gmat-generator output folder
   const outputDir = path.resolve(process.cwd(), '../scripts/gmat-generator/output');
@@ -67,15 +79,19 @@ async function main() {
     verified: q.verified,
   }));
 
-  // Check for duplicates before inserting
+  // Check for duplicates before inserting (skip if --clean was used)
   const existingCount = await Question.countDocuments();
   console.log(`Existing questions in database: ${existingCount}`);
 
-  // Filter out questions that already exist (by questionText)
-  const existingQuestions = await Question.find({}, { questionText: 1 });
-  const existingTexts = new Set(existingQuestions.map(q => q.questionText));
+  let newDocs = docs;
   
-  const newDocs = docs.filter(doc => !existingTexts.has(doc.questionText));
+  if (!cleanFlag) {
+    // Filter out questions that already exist (by questionText)
+    const existingQuestions = await Question.find({}, { questionText: 1 });
+    const existingTexts = new Set(existingQuestions.map(q => q.questionText));
+    
+    newDocs = docs.filter(doc => !existingTexts.has(doc.questionText));
+  }
   
   if (newDocs.length > 0) {
     await Question.insertMany(newDocs);
