@@ -11,6 +11,7 @@ export interface User {
 export interface Question {
     id: string;
     questionText: string;
+    passage?: string; // optional passage for reading comprehension questions
     options: string[];
     correctAnswer: string;
     type?: string; // e.g., "quantitative", "critical_reasoning", "data_sufficiency", etc.

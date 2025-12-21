@@ -13,6 +13,7 @@ import './Test.css';
 interface PracticeQuestion {
   id: string; // unify id as string for both trial and daily
   question: string;
+  passage?: string; // optional passage for reading comprehension questions
   options: { id: string; text: string }[];
   answer?: string; // trial has correct answer locally; daily does not until server evaluates
   type?: string; // e.g., "quantitative", "critical_reasoning", "data_sufficiency", etc.
@@ -66,6 +67,7 @@ const Test: React.FC = () => {
           const mapped: PracticeQuestion[] = (data.questions || []).map((q: any) => ({
             id: String(q.id),
             question: q.question,
+            passage: q.passage, // include passage field
             options: q.options,
             type: q.type,
             category: q.category,
@@ -93,6 +95,7 @@ const Test: React.FC = () => {
               const mappedRetake: PracticeQuestion[] = (retake.questions || []).map((q: any) => ({
                 id: String(q.id),
                 question: q.question,
+                passage: q.passage, // include passage field
                 options: q.options,
                 type: q.type,
                 category: q.category,
@@ -139,6 +142,7 @@ const Test: React.FC = () => {
           const mapped: PracticeQuestion[] = qs.slice(0, 2).map(q => ({
             id: String(q.id),
             question: q.question,
+            passage: q.passage, // include passage field
             options: q.options,
             answer: q.answer,
             type: q.type,
@@ -438,15 +442,19 @@ const Test: React.FC = () => {
           </div>
         )}
         {q && canPracticeEffective && (
-          <QuestionCard
-            question={q.question}
-            options={q.options}
-            selectedOptionId={answers[q.id] || null}
-            onOptionSelect={onAnswer}
-            type={q.type}
-            category={q.category}
-            difficulty={q.difficulty}
-          />
+          <>
+
+            <QuestionCard
+              question={q.question}
+              passage={q.passage}
+              options={q.options}
+              selectedOptionId={answers[q.id] || null}
+              onOptionSelect={onAnswer}
+              type={q.type}
+              category={q.category}
+              difficulty={q.difficulty}
+            />
+          </>
         )}
         {totalQuestions > 0 && (
           <div className="question-progress">

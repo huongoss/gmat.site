@@ -3,6 +3,7 @@ import MathRenderer from './MathRenderer';
 
 interface QuestionCardProps {
     question: string;
+    passage?: string; // optional passage for reading comprehension questions
     options: Array<{ id: string; text: string }>;
     selectedOptionId: string | null;
     onOptionSelect: (optionId: string) => void;
@@ -49,11 +50,10 @@ function parseDataSufficiency(q: string): { stem: string; statements: Array<{ la
     return { stem, statements };
 }
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ question, options, selectedOptionId, onOptionSelect, type, category, difficulty }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ question, passage, options, selectedOptionId, onOptionSelect, type, category, difficulty }) => {
     // Try to parse Data Sufficiency format for better presentation
     // MathRenderer handles all content (with or without $) so it's safe to parse
     const ds = parseDataSufficiency(question);
-    
     // Helper to format type/category for display
     const formatLabel = (text?: string) => text ? text.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
     
@@ -106,6 +106,33 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, options, selected
                     )}
                 </div>
             )}
+            
+            {/* Reading Comprehension Passage */}
+            {passage && (
+                <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f8f9fa',
+                    borderLeft: '4px solid #3b82f6',
+                    marginBottom: '20px',
+                    borderRadius: '4px',
+                    fontFamily: 'Georgia, serif',
+                    lineHeight: '1.8',
+                    color: '#374151'
+                }}>
+                    <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#3b82f6',
+                        marginBottom: '12px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                    }}>
+                        Reading Passage
+                    </div>
+                    <MathRenderer text={passage} />
+                </div>
+            )}
+            
             {!ds ? (
                 <h2 className="question"><MathRenderer text={question} /></h2>
             ) : (

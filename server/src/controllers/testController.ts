@@ -123,10 +123,11 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
                 });
             }
             // Re-fetch the stored questions to return consistent payload
-            const storedQs = await Question.find({ _id: { $in: user.dailyQuestionIds } }, { questionText: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 }).lean();
+            const storedQs = await Question.find({ _id: { $in: user.dailyQuestionIds } }, { questionText: 1, passage: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 }).lean();
             const payloadStored = storedQs.map((q: any) => ({
                 id: String(q._id),
                 question: q.questionText,
+                passage: q.passage, // include passage
                 options: (q.options || []).map((text: string, idx: number) => ({ id: String.fromCharCode(97 + idx), text })),
                 sequenceNumber: undefined, // sequence not critical for repeated view
                 type: q.type,
@@ -156,7 +157,7 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
             user.currentQuestionIndex = 0;
         }
 
-        const newQuestions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 })
+        const newQuestions = await Question.find({}, { questionText: 1, passage: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 })
             .sort({ _id: 1 })
             .skip(startIndex)
             .limit(toAllocate)
@@ -168,7 +169,7 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
             const totalInDB = await Question.countDocuments();
             // If startIndex beyond totalInDB, wrap and try again once.
             if (startIndex >= totalInDB && totalInDB > 0) {
-                const retryQuestions = await Question.find({}, { questionText: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 })
+                const retryQuestions = await Question.find({}, { questionText: 1, passage: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 })
                     .sort({ _id: 1 })
                     .limit(toAllocate)
                     .lean();
@@ -181,6 +182,7 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
                     const retryPayload = retryQuestions.map((q: any, idx: number) => ({
                         id: String(q._id),
                         question: q.questionText,
+                        passage: q.passage, // include passage
                         options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
                         sequenceNumber: idx + 1,
                         type: q.type,
@@ -228,6 +230,7 @@ export const getDailyQuestions = async (req: Request, res: Response) => {
         const payload = newQuestions.map((q: any, idx: number) => ({
             id: String(q._id),
             question: q.questionText,
+            passage: q.passage, // include passage
             options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
             sequenceNumber: startIndex + idx + 1,
             type: q.type,
@@ -455,10 +458,11 @@ export const getRetakeDailyQuestions = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'No completed daily practice found for today to retake.' });
         }
 
-        const questions = await Question.find({ _id: { $in: original.questionIds } }, { questionText: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 }).lean();
+        const questions = await Question.find({ _id: { $in: original.questionIds } }, { questionText: 1, passage: 1, options: 1, correctAnswer: 1, type: 1, category: 1, difficulty: 1, explanation: 1, verified: 1 }).lean();
         const payload = questions.map((q: any, idx: number) => ({
             id: String(q._id),
             question: q.questionText,
+            passage: q.passage, // include passage
             options: (q.options || []).map((text: string, oIdx: number) => ({ id: String.fromCharCode(97 + oIdx), text })),
             sequenceNumber: idx + 1,
             type: q.type,

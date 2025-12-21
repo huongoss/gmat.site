@@ -2,6 +2,7 @@ import { Schema, model, Document } from 'mongoose';
 
 interface IQuestion extends Document {
     questionText: string;
+    passage?: string; // optional passage for reading comprehension questions
     options: string[];
     correctAnswer: string;
     type?: string; // e.g., "quantitative", "critical_reasoning", "data_sufficiency", etc.
@@ -13,6 +14,7 @@ interface IQuestion extends Document {
 
 const questionSchema = new Schema<IQuestion>({
     questionText: { type: String, required: true },
+    passage: { type: String, required: false }, // optional passage for reading comprehension
     options: { type: [String], required: true },
     correctAnswer: { type: String, required: true },
     type: { type: String, required: false },

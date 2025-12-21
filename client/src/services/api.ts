@@ -212,7 +212,8 @@ export const fetchVoiceUsage = async () => {
 // Local-only helper to fetch demo questions from public folder
 export const fetchDemoQuestions = async (): Promise<Array<{ 
     id: number; 
-    question: string; 
+    question: string;
+    passage?: string; // optional passage for reading comprehension
     options: { id: string; text: string }[]; 
     answer: string;
     type?: string;

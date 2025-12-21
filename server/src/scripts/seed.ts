@@ -18,6 +18,7 @@ async function main() {
   const allQuestions: Array<{
     id: number;
     question: string;
+    passage?: string; // optional passage for reading comprehension
     options: Array<{ id: string; text: string }>;
     answer: string;
     type?: string;
@@ -35,6 +36,7 @@ async function main() {
       questions: Array<{
         id: number;
         question: string;
+        passage?: string; // optional passage for reading comprehension
         options: Array<{ id: string; text: string }>;
         answer: string;
         type?: string;
@@ -51,10 +53,11 @@ async function main() {
   const verifiedQuestions = allQuestions.filter(q => q.verified !== false);
   console.log(`Total questions: ${allQuestions.length}, Verified: ${verifiedQuestions.length}`);
 
-  // Map to schema: questionText, options (string[]), correctAnswer (store the option id e.g. 'a')
+  // Map to schema: questionText, passage, options (string[]), correctAnswer (store the option id e.g. 'a')
   // Also include new metadata fields: type, category, difficulty, explanation, verified
   const docs = verifiedQuestions.map((q) => ({
     questionText: q.question,
+    passage: q.passage, // include passage field
     options: q.options.map((o) => o.text),
     correctAnswer: q.answer,
     type: q.type,
